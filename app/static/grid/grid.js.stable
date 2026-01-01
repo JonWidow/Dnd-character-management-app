@@ -1,0 +1,151 @@
+// grid.js — DEBUG VERSION
+
+console.log("grid.js loaded");
+
+// ----- CONSTANTS -----
+const CELL_SIZE = 50;
+const GRID_WIDTH = 40;    // 40 cells horizontally
+const GRID_HEIGHT = 40;   // 40 cells vertically
+console.log("Grid constants:", {CELL_SIZE, GRID_WIDTH, GRID_HEIGHT});
+
+// ----- STAGE -----
+const container = document.getElementById("grid-container");
+console.log("Container size:", container.clientWidth, container.clientHeight);
+
+const stage = new Konva.Stage({
+    container: "grid-container",
+    width: container.clientWidth,
+    height: container.clientHeight,
+    draggable: true   // allow panning
+});
+
+console.log("Stage initialized:", {
+    width: stage.width(),
+    height: stage.height()
+});
+
+// ----- LAYERS -----
+const gridLayer = new Konva.Layer();
+const debugLayer = new Konva.Layer();
+const tokenLayer = new Konva.Layer();
+
+stage.add(gridLayer);
+stage.add(debugLayer);
+stage.add(tokenLayer);
+
+// ----- DRAW DIAGNOSTIC GRID -----
+function drawDebugGrid() {
+    console.log("Drawing debug grid…");
+
+    gridLayer.destroyChildren(); // clear the layer
+
+    // Strong visible background tile
+    gridLayer.add(new Konva.Rect({
+        x: 0,
+        y: 0,
+        width: GRID_WIDTH * CELL_SIZE,
+        height: GRID_HEIGHT * CELL_SIZE,
+        fill: "#bbbbbb"
+    }));
+
+    // Thick lines (H & V)
+    for (let i = 0; i <= GRID_WIDTH; i++) {
+        let x = i * CELL_SIZE;
+        gridLayer.add(new Konva.Line({
+            points: [x, 0, x, GRID_HEIGHT * CELL_SIZE],
+            stroke: "black",
+            strokeWidth: 2
+        }));
+    }
+
+    for (let j = 0; j <= GRID_HEIGHT; j++) {
+        let y = j * CELL_SIZE;
+        gridLayer.add(new Konva.Line({
+            points: [0, y, GRID_WIDTH * CELL_SIZE, y],
+            stroke: "black",
+            strokeWidth: 2
+        }));
+    }
+
+    // CROSSHAIRS for origin
+    gridLayer.add(new Konva.Line({
+        points: [-2000, 0, 2000, 0],
+        stroke: "red",
+        strokeWidth: 4
+    }));
+    gridLayer.add(new Konva.Line({
+        points: [0, -2000, 0, 2000],
+        stroke: "red",
+        strokeWidth: 4
+    }));
+
+    gridLayer.draw();
+}
+
+drawDebugGrid();
+
+// ----- DEBUG TEXT -----
+const debugText = new Konva.Text({
+    x: 10,
+    y: 10,
+    fontSize: 22,
+    fill: "blue",
+    text: "debug..."
+});
+debugLayer.add(debugText);
+
+// Update debug UI each frame
+function updateDebug() {
+    debugText.text(
+        "stage pos: " + JSON.stringify(stage.position()) +
+        "\nstage scale: " + stage.scaleX() +
+        "\ncell size: " + CELL_SIZE +
+        "\ngrid size px: " + (GRID_WIDTH * CELL_SIZE) + " × " + (GRID_HEIGHT * CELL_SIZE)
+    );
+    debugLayer.draw();
+}
+setInterval(updateDebug, 200);
+
+// -----------------------------------------------------
+// TOKEN (just to check interaction layering)
+// -----------------------------------------------------
+console.log("Adding test token…");
+
+let token = new Konva.Circle({
+    x: 100,
+    y: 100,
+    radius: 40,
+    fill: "red",
+    stroke: "black",
+    strokeWidth: 4,
+    draggable: true
+});
+tokenLayer.add(token);
+
+let label = new Konva.Text({
+    x: 70,
+    y: 90,
+    text: "Test",
+    fontSize: 22,
+    fill: "white"
+});
+tokenLayer.add(label);
+
+token.on("dragmove", () => {
+    label.position({ x: token.x() - 30, y: token.y() - 10 });
+    tokenLayer.batchDraw();
+});
+
+tokenLayer.draw();
+
+// -----------------------------------------------------
+// RESIZE HANDLER
+// -----------------------------------------------------
+window.addEventListener("resize", () => {
+    console.log("Resize event");
+
+    stage.width(container.clientWidth);
+    stage.height(container.clientHeight);
+
+    debugLayer.draw();
+});

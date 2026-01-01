@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ feature.name }} - Feature Details{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+  <h1 class="text-3xl font-bold mb-4 text-blue-800">{{ feature.name }}</h1>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4 text-gray-700 text-sm">
+    <div><strong>Class:</strong> {{ feature.class_name }}</div>
+    <div><strong>Level:</strong> {{ feature.level }}</div>
+    {% if feature.uses %}<div><strong>Uses:</strong> {{ feature.uses }}</div>{% endif %}
+  </div>
+
+  {% if feature.scaling and feature.scaling|length %}
+    <h2 class="text-xl font-semibold mb-2">Scaling</h2>
+    <pre class="whitespace-pre-wrap bg-gray-50 rounded p-3 text-sm">{{ feature.scaling | tojson(indent=2) }}</pre>
+  {% endif %}
+
+  <h2 class="text-xl font-semibold mb-2">Description</h2>
+  <p class="whitespace-pre-wrap">{{ feature.description }}</p>
+
+  <div class="mt-6">
+    <a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">Back to Characters</a>
+  </div>
+</div>
+{% endblock %}

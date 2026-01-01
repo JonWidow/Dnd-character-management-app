@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}D&D Character Manager{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-screen bg-gray-50 text-center px-4">
+    <div class="bg-white shadow-lg rounded-2xl p-8 w-full max-w-lg">
+        <h1 class="text-4xl font-bold text-gray-800 mb-4">?? D&D Character Manager</h1>
+        <p class="text-gray-600 mb-6">
+            Manage your heroes, track their spells, and build your story.
+        </p>
+
+        <div class="flex flex-col sm:flex-row justify-center gap-4">
+            <a href="{{ url_for('add_character') }}" 
+               class="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition">
+                Add Character
+            </a>
+            <a href="{{ url_for('characters') }}" 
+               class="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition">
+                List Characters
+            </a>
+            <a href="{{ url_for('spells_page') }}" 
+               class="bg-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-purple-700 transition">
+                Spell Search
+            </a>
+        </div>
+
+        <footer class="mt-8 text-gray-400 text-sm">
+            &copy; 2025 D&D Character Manager
+        </footer>
+    </div>
+</div>
+{% endblock %}

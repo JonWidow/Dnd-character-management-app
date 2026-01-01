@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ character_class.name }} | D&D Character Class{% endblock %}
+
+{% block content %}
+<div class="class-container">
+  <h1 class="class-name">{{ character_class.name }}</h1>
+
+  <div class="class-summary">
+    <p><strong>Hit Die:</strong> {{ character_class.hit_die }}</p>
+    {% if character_class.spellcasting_ability %}
+      <p><strong>Spellcasting Ability:</strong> {{ character_class.spellcasting_ability }}</p>
+    {% endif %}
+    <p><strong>Prepares Spells:</strong> {{ "Yes" if character_class.prepares_spells else "No" }}</p>
+  </div>
+
+  {% if character_class.description %}
+    <div class="class-description">
+      <h2>Description</h2>
+      <p>{{ character_class.description | safe }}</p>
+    </div>
+  {% endif %}
+
+  {% if character_class.features %}
+    <div class="class-features">
+      <h2>Class Features</h2>
+
+      {% set grouped = {} %}
+      {% for feature in character_class.features.order_by('level', 'name') %}
+        {% set level = feature.level %}
+        {% if not grouped.get(level) %}
+          {% set _ = grouped.update({level: []}) %}
+        {% endif %}
+        {% set _ = grouped[level].append(feature) %}
+      {% endfor %}
+
+      {% for level, features in grouped.items() %}
+        <div class="feature-level">
+          <h3>Level {{ level }}</h3>
+          <ul>
+            {% for feature in features %}
+              <li>
+                <details class="feature-item">
+                  <summary><strong>{{ feature.name }}</strong></summary>
+                  <div class="feature-content">
+                    <p>{{ feature.description | safe }}</p>
+                    {% if feature.uses %}
+                      <p><strong>Uses:</strong> {{ feature.uses }}</p>
+                    {% endif %}
+                    {% if feature.scaling %}
+                      <p><strong>Scaling:</strong></p>
+                      <pre>{{ feature.scaling | tojson(indent=2) }}</pre>
+                    {% endif %}
+                  </div>
+                </details>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<style>
+.class-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: "Georgia", serif;
+}
+
+.class-name {
+  font-size: 2.2rem;
+  border-bottom: 3px solid #b5651d;
+  margin-bottom: 1rem;
+}
+
+.class-summary p {
+  margin: 0.3rem 0;
+}
+
+.class-description {
+  margin-top: 2rem;
+}
+
+.class-features {
+  margin-top: 2rem;
+}
+
+.feature-level {
+  margin-bottom: 2rem;
+}
+
+.feature-item {
+  background: #f7f2ec;
+  border: 1px solid #d8c7b3;
+  border-radius: 8px;
+  padding: 0.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.feature-item summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: #5a3310;
+}
+
+.feature-content {
+  margin-top: 0.5rem;
+  padding-left: 1rem;
+}
+
+pre {
+  background: #f0ebe5;
+  padding: 0.6rem;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+</style>
+{% endblock %}

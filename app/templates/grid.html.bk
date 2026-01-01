@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Grid {{ code }}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto p-4">
+  <div class="flex items-center justify-between mb-3">
+    <h1 class="text-2xl font-bold">Grid: {{ code }}</h1>
+    <div class="space-x-2">
+      <button id="spawn" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Spawn token</button>
+      <button id="refresh" class="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300">Refresh</button>
+    </div>
+  </div>
+
+  <div id="gridWrap" class="w-full border rounded bg-white shadow-sm overflow-hidden">
+    <canvas id="grid"></canvas>
+  </div>
+
+  <p class="text-sm text-gray-500 mt-2">Tip: drag a token to move it. Open this page in two tabs to see live sync.</p>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+(() => {
+  const code = "{{ code }}";
+  const socket = io(); // same origin
+  const wrap = document.getElementById('gridWrap');
+  const cvs  = document.getElementById('grid');
+  const ctx  = cvs.getContext('2d');
+
+  // grid state (defaults; server can override)
+  let GW = 20, GH = 13, cell = 48, tokens = [];
+  let dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  function setCanvasSize() {
+    // Fit to container width and ~70% viewport height
+    const availW = wrap.clientWidth - 2;          // border
+    const availH = Math.floor(window.innerHeight * 0.70);
+    const targetCell = Math.floor(Math.max(16, Math.min(availW / GW, availH / GH)));
+
+    cell = targetCell;
+
+    // CSS pixels
+    const cssW = GW * cell;
+    const cssH = GH * cell;
+
+    // Handle HiDPI
+    dpr = Math.max(1, window.devicePixelRatio || 1);
+    cvs.style.width  = cssW + 'px';
+    cvs.style.height = cssH + 'px';
+    cvs.width  = Math.floor(cssW * dpr);
+    cvs.height = Math.floor(cssH * dpr);
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw() {
+    // clear
+    ctx.clearRect(0, 0, cvs.width / dpr, cvs.height / dpr);
+
+    // bg
+    ctx.fillStyle = "#f8fafc";
+    ctx.fillRect(0, 0, GW*cell, GH*cell);
+
+    // grid
+    ctx.strokeStyle = "#cbd5e1"; // slate-300
+    ctx.lineWidth = 1;
+    for (let x = 0; x <= GW; x++) {
+      ctx.beginPath();
+      ctx.moveTo(x*cell + 0.5, 0);
+      ctx.lineTo(x*cell + 0.5, GH*cell);
+      ctx.stroke();
+    }
+    for (let y = 0; y <= GH; y++) {
+      ctx.beginPath();
+      ctx.moveTo(0, y*cell + 0.5);
+      ctx.lineTo(GW*cell, y*cell + 0.5);
+      ctx.stroke();
+    }
+
+    // border
+    ctx.strokeStyle = "#64748b"; // slate-500
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, GW*cell-2, GH*cell-2);
+
+    // tokens
+    tokens.forEach(t => {
+      const cx = (t.x + 0.5) * cell;
+      const cy = (t.y + 0.5) * cell;
+      const r  = cell * 0.35;
+
+      // token
+      ctx.beginPath();
+      ctx.fillStyle = t.color || "#444";
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+
+      // label
+      ctx.fillStyle = "#111";
+      ctx.font = Math.max(10, Math.floor(cell * 0.28)) + "px system-ui, sans-serif";
+      ctx.textBaseline = "top";
+      ctx.fillText(t.name || ("T"+t.id), cx - r + 2, cy - r + 2);
+    });
+  }
+
+  function layoutAndDraw() { setCanvasSize(); draw(); }
+
+  // ---- Socket.IO ----
+  socket.on('connect', () => {
+    socket.emit('join_grid', { code, user: 'anon' });
+    socket.emit('request_state', { code });
+  });
+
+  socket.on('state', (s) => {
+    if (!s || !s.exists) return;
+    // server-provided size overrides
+    GW = s.grid?.w || GW;
+    GH = s.grid?.h || GH;
+    cell = s.grid?.cell_px || cell;
+    tokens = s.tokens || [];
+    layoutAndDraw();
+  });
+
+  socket.on('token_spawned', (t) => { tokens.push(t); draw(); });
+  socket.on('token_removed', (p) => { tokens = tokens.filter(x => x.id !== p.token_id); draw(); });
+  socket.on('token_moved',   (p) => {
+    const i = tokens.findIndex(x => x.id === p.token_id);
+    if (i >= 0) { tokens[i].x = p.x; tokens[i].y = p.y; draw(); }
+  });
+
+  // ---- UI ----
+  document.getElementById('refresh').onclick = () => socket.emit('request_state', { code });
+  document.getElementById('spawn').onclick   = () => {
+    const name = prompt("Token name:", "Token");
+    if (name !== null) socket.emit('spawn_token', { code, name });
+  };
+
+  // ---- Drag to move ----
+  let dragId = null;
+  function gridPosFromEvent(e) {
+    const rect = cvs.getBoundingClientRect();
+    const x = (e.clientX - rect.left);
+    const y = (e.clientY - rect.top);
+    return { gx: Math.floor(x / cell), gy: Math.floor(y / cell) };
+  }
+  cvs.addEventListener('mousedown', (e) => {
+    const { gx, gy } = gridPosFromEvent(e);
+    const hit = tokens.find(t => t.x === gx && t.y === gy);
+    if (hit) dragId = hit.id;
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (dragId == null) return;
+    const { gx, gy } = gridPosFromEvent(e);
+    socket.emit('move_token', { code, token_id: dragId, x: gx, y: gy });
+    dragId = null;
+  });
+
+  // ---- Responsive ----
+  window.addEventListener('resize', layoutAndDraw);
+
+  // initial size (before state arrives) so you see the grid immediately
+  layoutAndDraw();
+})();
+</script>
+{% endblock %}

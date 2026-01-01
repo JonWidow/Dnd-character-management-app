@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}{{ character.name if character else "Character Not Found" }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto p-6">
+    {% if not character %}
+        <p class="text-red-600 font-semibold">Character not found.</p>
+        <p><a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">Back to list</a></p>
+    {% else %}
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold text-blue-800">{{ character.name }}</h1>
+            <div class="flex space-x-2">
+                <button id="spellStatsBtn"
+                        class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">
+                    Spell Stats
+                </button>
+                <a href="{{ url_for('edit_character', char_id=character.id) }}"
+                   class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Edit
+                </a>
+                <button id="deleteCharBtn"
+                        class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+                    Delete
+                </button>
+                <a href="{{ url_for('level_up_character', char_id=character.id) }}"
+                   class="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
+                     Level Up
+                </a>
+            </div>
+        </div>
+
+        <!-- Basic Info -->
+        <table class="w-full mb-4">
+            <tr>
+
+		<td class="font-semibold text-gray-700">Class:</td>
+		<td>
+    		    {% if character.char_class %}
+        	        <a href="{{ url_for('show_character_class', class_name=character.char_class.name) }}"
+           		    class="text-blue-600 hover:underline">
+            		    {{ character.char_class.name if character.char_class else "Unknown" }}
+        		</a>
+    		    {% else %}
+       			<span class="text-gray-500 italic">Unknown</span>
+    		    {% endif %}
+		</td>
+		<td class="font-semibold text-gray-700">Race:</td>
+		<td>
+    		    {% if character.race %}
+        		<a href="{{ url_for('show_race', race_name=character.race) }}"
+           		  class="text-blue-600 hover:underline">
+            		  {{ character.race }}
+        		</a>
+    		    {% else %}
+        	<span class="text-gray-500 italic">Unknown</span>
+    		    {% endif %}
+</td>
+
+            </tr>
+            <tr>
+                <td class="font-semibold text-gray-700">Level:</td>
+                <td>{{ character.level }}</td>
+            </tr>
+        </table>
+
+        <!-- Ability Scores -->
+        <h2 class="font-semibold text-gray-700 mb-2">Ability Scores</h2>
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
+            <div class="text-center bg-gray-100 rounded p-2"><span class="font-semibold">STR</span><br>{{ character.str_sc }}</div>
+            <div class="text-center bg-gray-100 rounded p-2"><span class="font-semibold">DEX</span><br>{{ character.dex_sc }}</div>
+            <div class="text-center bg-gray-100 rounded p-2"><span class="font-semibold">CON</span><br>{{ character.con_sc }}</div>
+            <div class="text-center bg-gray-100 rounded p-2"><span class="font-semibold">INT</span><br>{{ character.int_sc }}</div>
+            <div class="text-center bg-gray-100 rounded p-2"><span class="font-semibold">WIS</span><br>{{ character.wis_sc }}</div>
+            <div class="text-center bg-gray-100 rounded p-2"><span class="font-semibold">CHA</span><br>{{ character.cha_sc }}</div>
+        </div>
+
+        <!-- Skills -->
+        <div class="mb-6">
+            <h2 class="font-semibold text-gray-700 mb-2">Skills</h2>
+            <ul class="list-disc list-inside">
+                {% for skill in character.skills %}
+                    <li>{{ skill.name }}</li>
+                {% else %}
+                    <li class="text-gray-500 italic">No skills listed.</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+                <!-- Class Features (clickable) -->
+        <div class="mb-6">
+          <h2 class="font-semibold text-gray-700 mb-2">Class Features</h2>
+          {% if feats and feats|length > 0 %}
+            <ul class="list-disc list-inside">
+              {% for f in feats %}
+                <li>
+                  <span class="font-semibold">Level {{ f.level }}:</span>
+                  <a href="{{ url_for('feature_details', feature_id=f.id) }}"
+                     class="text-blue-600 hover:underline">
+                    {{ f.name }}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="text-sm text-gray-500 italic">No class features available for this level.</p>
+          {% endif %}
+        </div>
+
+        <!-- Spell Slots -->
+        <div class="mb-6">
+          <h2 class="font-semibold text-gray-700 mb-2">Spell Slots</h2>
+          {% if character.spell_slots and character.spell_slots|length > 0 %}
+            <table class="w-full border rounded text-left">
+              <thead>
+                <tr class="bg-gray-100">
+                    <th class="px-2 py-1 border">Level</th>
+                    <th class="px-2 py-1 border">Total Slots</th>
+                    <th class="px-2 py-1 border">Remaining Slots</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for slot in character.spell_slots|sort(attribute='level') %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-2 py-1 border">{{ slot.level }}</td>
+                        <td class="px-2 py-1 border">{{ slot.total_slots }}</td>
+                        <td class="px-2 py-1 border">{{ slot.remaining_slots }}</td>
+                    </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="text-sm text-gray-500 italic">This character has no spell slots yet.</p>
+          {% endif %}
+        </div>
+
+
+
+        <!-- Prepared Spells -->
+        {% set prepared = prepared_spells if prepared_spells is defined else [] %}
+        <div class="mb-6">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="font-semibold text-gray-700">
+                    Prepared Spells
+                    <span class="text-sm text-gray-500">({{ prepared|length }}/{{ max_prepared }})</span>
+                </h2>
+                <button id="managePreparedBtn"
+                        class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                    Manage
+                </button>
+            </div>
+
+            {% if prepared and prepared|length > 0 %}
+                <ul class="list-disc list-inside">
+                    {% for sp in prepared %}
+                        <li>
+                            <a href="{{ url_for('spell_details', spell_id=sp.id) }}"
+                               class="text-blue-600 hover:underline">
+                                {{ sp.name }} (Level {{ sp.level }})
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-sm text-gray-500 italic">No spells prepared.</p>
+            {% endif %}
+        </div>
+
+        <!-- Known Spells (Collapsible) -->
+        <div class="mb-6 border rounded-md">
+            <button type="button" id="toggleKnownSpells"
+                    class="w-full flex justify-between items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-t-md">
+                <span class="font-semibold text-gray-700">Known Spells</span>
+                <svg id="knownArrow" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                     class="w-4 h-4 transform transition-transform duration-200">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <div id="knownSpellsSection" class="hidden p-4">
+                <ul class="list-disc list-inside">
+                    {% for spell in character.spells %}
+                        <li>
+                            <a href="{{ url_for('spell_details', spell_id=spell.id) }}" class="text-blue-600 hover:underline">
+                                {{ spell.name }} (Level {{ spell.level }})
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="text-gray-500 italic">No known spells yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <p><a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">Back to list</a></p>
+
+        <!-- Spell Stats Popup Modal -->
+        <div id="spellStatsModal"
+             class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg w-80 p-6 text-center relative">
+                <button id="closeSpellStats"
+                        class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+                <h2 class="text-xl font-semibold mb-4 text-blue-700">Spell Information</h2>
+                <p class="mb-2">Known Spells: <span class="font-bold">{{ known_spells_count }}</span></p>
+                <p>Spells You Can Prepare: <span class="font-bold">{{ max_prepared }}</span></p>
+            </div>
+        </div>
+
+        <!-- Manage Prepared Spells Modal -->
+        <div id="managePreparedModal"
+             class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-5 relative">
+                <button id="closeManagePrepared"
+                        class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+                <h3 class="text-lg font-semibold mb-3">Select Prepared Spells</h3>
+
+                <p class="text-sm text-gray-600 mb-2">
+                    You can prepare up to <span class="font-semibold">{{ max_prepared }}</span> spells.
+                    <span id="prepCount" class="ml-1 font-semibold">0</span>/<span id="prepMax">{{ max_prepared }}</span> selected.
+                </p>
+
+                <form method="POST" action="{{ url_for('prepare_spells', char_id=character.id) }}">
+                    <div class="max-h-64 overflow-y-auto border rounded p-3">
+                        {% set prepared_ids = prepared | map(attribute='id') | list %}
+                        {% for sp in character.spells %}
+                            <label class="flex items-center justify-between py-1">
+                                <span>Lv {{ sp.level }} — {{ sp.name }}</span>
+                                <input type="checkbox"
+                                       name="prepared_spells"
+                                       value="{{ sp.id }}"
+                                       class="prep-checkbox"
+                                       {% if sp.id in prepared_ids %}checked{% endif %}>
+                            </label>
+                        {% else %}
+                            <p class="text-sm text-gray-500 italic">No known spells to prepare.</p>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mt-4 flex justify-end space-x-2">
+                        <button type="button" id="cancelPrepared"
+                                class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit"
+                                class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                            Save Prepared
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="deleteModal"
+             class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-5 relative">
+                <button id="closeDelete"
+                        class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+                <h3 class="text-lg font-semibold mb-3 text-red-700">Delete Character?</h3>
+                <p class="text-sm text-gray-700 mb-4">
+                    This action cannot be undone. Are you sure you want to delete <span class="font-semibold">{{ character.name }}</span>?
+                </p>
+                <form method="POST" action="{{ url_for('delete_character', char_id=character.id) }}">
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancelDelete"
+                                class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit"
+                                class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            // Spell Stats modal
+            const statsModal = document.getElementById("spellStatsModal");
+            const openStats = document.getElementById("spellStatsBtn");
+            const closeStats = document.getElementById("closeSpellStats");
+            openStats?.addEventListener("click", () => statsModal.classList.remove("hidden"));
+            closeStats?.addEventListener("click", () => statsModal.classList.add("hidden"));
+            statsModal?.addEventListener("click", (e) => { if (e.target === statsModal) statsModal.classList.add("hidden"); });
+
+            // Manage Prepared modal
+            const manageModal = document.getElementById("managePreparedModal");
+            const openManage = document.getElementById("managePreparedBtn");
+            const closeManage = document.getElementById("closeManagePrepared");
+            const cancelPrepared = document.getElementById("cancelPrepared");
+            const checkboxes = Array.from(document.querySelectorAll(".prep-checkbox"));
+            const prepCountEl = document.getElementById("prepCount");
+            const prepMax = parseInt(document.getElementById("prepMax")?.textContent || "0", 10);
+            function updateCount() { prepCountEl.textContent = checkboxes.filter(cb => cb.checked).length; }
+            function enforceLimit(e) {
+                const checked = checkboxes.filter(cb => cb.checked).length;
+                if (checked > prepMax) {
+                    e.target.checked = false;
+                    prepCountEl.classList.add("text-red-600");
+                    setTimeout(() => prepCountEl.classList.remove("text-red-600"), 400);
+                }
+                updateCount();
+            }
+            openManage?.addEventListener("click", () => { updateCount(); manageModal.classList.remove("hidden"); });
+            closeManage?.addEventListener("click", () => manageModal.classList.add("hidden"));
+            cancelPrepared?.addEventListener("click", () => manageModal.classList.add("hidden"));
+            manageModal?.addEventListener("click", (e) => { if (e.target === manageModal) manageModal.classList.add("hidden"); });
+            checkboxes.forEach(cb => cb.addEventListener("change", enforceLimit));
+            updateCount();
+
+            // Known Spells collapsible
+            const toggleKnownSpells = document.getElementById('toggleKnownSpells');
+            const knownSpellsSection = document.getElementById('knownSpellsSection');
+            const knownArrow = document.getElementById('knownArrow');
+            toggleKnownSpells?.addEventListener('click', () => {
+                knownSpellsSection.classList.toggle('hidden');
+                knownArrow.classList.toggle('rotate-180');
+            });
+
+            // Delete confirmation modal
+            const deleteBtn = document.getElementById('deleteCharBtn');
+            const deleteModal = document.getElementById('deleteModal');
+            const closeDelete = document.getElementById('closeDelete');
+            const cancelDelete = document.getElementById('cancelDelete');
+            deleteBtn?.addEventListener('click', () => deleteModal.classList.remove('hidden'));
+            closeDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
+            cancelDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
+            deleteModal?.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.classList.add('hidden'); });
+        </script>
+    {% endif %}
+</div>
+{% endblock %}

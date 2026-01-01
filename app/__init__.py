@@ -1,0 +1,360 @@
+# app.py
+from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, flash
+from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots
+from app.models.character_struct import CharacterClassFeature, RaceFeature
+from app.grid import grid_bp
+from app.extensions import socketio
+import os
+
+app = Flask(__name__)
+
+# --- Instance folder & absolute SQLite path ---
+basedir = os.path.abspath(os.path.dirname(__file__))         # /opt/dnd
+instance_path = os.path.join(basedir, "../instance")            # /opt/dnd/instance
+os.makedirs(instance_path, exist_ok=True)
+
+db_path = os.path.join(instance_path, "characters.db")       # /opt/dnd/instance/characters.db
+app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
+
+db.init_app(app)
+
+# Initialize database
+with app.app_context():
+    db.create_all()
+
+socketio.init_app(app)
+app.register_blueprint(grid_bp)
+
+# ---------- Helpers ----------
+def ability_mod(score: int) -> int:
+    try:
+        return (int(score) - 10) // 2
+    except Exception:
+        return 0
+
+def _class_row_for(character):
+    name = (character.char_class.name if character.char_class else "").strip()
+    if not name:
+        return None
+    return (CharacterClassModel.query
+            .filter(db.func.lower(CharacterClassModel.name) == db.func.lower(name))
+            .first())
+
+# ---------- Routes ----------
+@app.route('/')
+def home():
+    return render_template('home.html')
+
+@app.route('/skills', methods=['GET'])
+def get_skills():
+    skills = Skill.query.all()
+    return jsonify([skill.to_dict() for skill in skills])
+
+@app.route('/add_character', methods=['GET','POST'])
+def add_character():
+    if request.method == 'POST':
+        # level (>=1)
+        level = request.form.get('level', type=int)
+        if level is None or level < 1:
+            level = 1
+
+        ability_scores = [
+            int(request.form['str_sc']),
+            int(request.form['dex_sc']),
+            int(request.form['con_sc']),
+            int(request.form['int_sc']),
+            int(request.form['wis_sc']),
+            int(request.form['cha_sc'])
+        ]
+
+        new_char = Character(
+            name=request.form['name'].strip(),
+            char_class=request.form['char_class'].strip(),
+            race=request.form['race'].strip(),
+            ability_scores=ability_scores,
+            level=level
+        )
+        db.session.add(new_char)
+        db.session.commit()
+        return redirect(url_for('character_details', char_id=new_char.id))
+    return render_template('add_character.html')
+
+@app.route('/characters/<int:char_id>/delete', methods=['POST'])
+def delete_character(char_id: int):
+    char = Character.query.get_or_404(char_id)
+    db.session.delete(char)
+    db.session.commit()
+    flash('Character deleted.', 'success')
+    return redirect(url_for('characters'))
+
+
+
+@app.route('/characters')
+def characters():
+    name = request.args.get('name')
+    if not name or name == '*':
+        chars = Character.query.all()
+        return render_template('list_characters.html', characters=chars)
+    else:
+        # If a name is provided, try to find the character
+        char = Character.query.filter_by(name=name).first()
+        if char:
+            return render_template('character_details.html', character=char)
+        else:
+            return render_template('character_details.html', character=None)
+
+@app.route('/characters/<int:char_id>')
+def character_details(char_id):
+    char = Character.query.get_or_404(char_id)
+
+    cls = _class_row_for(char)
+    known_spells_count = len(getattr(char, "spells", []) or [])
+    max_prepared = 0
+    if cls and cls.prepares_spells:
+        ability = (cls.spellcasting_ability or "").lower()
+        sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
+        max_prepared = max(1, char.level + ability_mod(sc_map.get(ability, 10)))
+
+    # Features up to level (works if relationship is lazy='dynamic')
+    if cls:
+        try:
+            feats = (cls.features
+                     .filter(CharacterClassFeature.level <= char.level)
+                     .order_by(CharacterClassFeature.level.asc(),
+                               CharacterClassFeature.name.asc())
+                     .all())
+        except AttributeError:
+            # fallback if features is an eager list
+            feats = sorted(
+                [f for f in (cls.features or []) if f.level <= char.level],
+                key=lambda f: (f.level, f.name.lower())
+            )
+    else:
+        feats = []
+
+    return render_template('character_details.html',
+                           character=char,
+                           known_spells_count=known_spells_count,
+                           max_prepared=max_prepared,
+                           prepared_spells=char.prepared_spells,
+                           feats=feats)
+
+@app.route('/api/characters')
+def api_characters():
+    name = request.args.get('q', '')
+    if name:
+        chars = Character.query.filter(Character.name.ilike(f"%{name}%")).all()
+    else:
+        chars = Character.query.all()
+
+    result = []
+    for char in chars:
+        result.append({
+            "id": char.id,
+            "name": char.name,
+            "level": char.level,
+            "race": char.race,
+            "char_class": char.char_class.name if char.char_class else None,  # serialize related class
+            "max_hp": char.max_hp,
+            "current_hp": char.current_hp,
+        })
+
+    return jsonify(result)
+
+
+@app.route('/features/<int:feature_id>')
+def feature_details(feature_id: int):
+    feat = CharacterClassFeature.query.get_or_404(feature_id)
+    ctx = {
+        "id": feat.id,
+        "name": feat.name,
+        "level": feat.level,
+        "description": feat.description or "",
+        "uses": feat.uses or "",
+        "scaling": feat.scaling or {},
+        "class_name": feat.character_class.name if feat.character_class else "",
+    }
+    return render_template('feature_details.html', feature=ctx)
+
+@app.route('/spells')
+def spells_page():
+    return render_template('spells.html')
+
+@app.route('/api/spells')
+def get_spells():
+    query = request.args.get('q', '').strip()
+    if not query:
+        spells = Spell.query.limit(20).all()
+    else:
+        spells = Spell.query.filter(Spell.name.ilike(f'%{query}%')).limit(20).all()
+    return jsonify([
+        {"id": s.id, "name": s.name, "level": s.level, "school": s.school, "casting_time": s.casting_time}
+        for s in spells
+    ])
+
+@app.route('/spells/<int:spell_id>')
+def spell_details(spell_id):
+    spell = Spell.query.get_or_404(spell_id)
+    return render_template('spell_details.html', spell=spell)
+
+# Edit character (GET shows form, POST saves and handles known spells)
+@app.route('/characters/<int:char_id>/edit', methods=['GET', 'POST'])
+def edit_character(char_id: int):
+    char = Character.query.get_or_404(char_id)
+
+    cls = _class_row_for(char)
+    available_spells = cls.spells if cls else Spell.query.order_by(Spell.level.asc(), Spell.name.asc()).all()
+
+    if request.method == 'POST':
+        nm = request.form.get('name')
+        if nm: char.name = nm.strip()
+
+        rc = request.form.get('race')
+        if rc: char.race = rc.strip()
+
+        lvl = request.form.get('level', type=int)
+        if lvl and lvl >= 1:
+            char.level = lvl
+
+        for key in ['str_sc','dex_sc','con_sc','int_sc','wis_sc','cha_sc']:
+            val = request.form.get(key, type=int)
+            if val is not None:
+                setattr(char, key, val)
+
+        # known spells selection
+        spell_ids = request.form.getlist('known_spells')
+        if spell_ids is not None:
+            chosen = Spell.query.filter(Spell.id.in_(list(map(int, spell_ids)))).all()
+            char.spells = chosen
+
+        # Recalc max prepared & enforce prepared ⊆ known and cap
+        cls = _class_row_for(char)
+        max_prepared = 0
+        if cls and cls.prepares_spells:
+            ability = (cls.spellcasting_ability or "").lower()
+            sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
+            ability_score = sc_map.get(ability, 10)
+            max_prepared = max(1, char.level + ability_mod(ability_score))
+
+        known_ids = {s.id for s in (char.spells or [])}
+        if getattr(char, 'prepared_spells', None) is not None:
+            pruned = [s for s in char.prepared_spells if s.id in known_ids]
+            if max_prepared and len(pruned) > max_prepared:
+                kept = pruned[:max_prepared]
+                char.prepared_spells = kept
+                flash(f'Prepared spells trimmed to {max_prepared} due to level/ability changes.', 'warning')
+            else:
+                char.prepared_spells = pruned
+
+        db.session.commit()
+        flash('Character updated.', 'success')
+        return redirect(url_for('character_details', char_id=char.id))
+
+    return render_template('edit_character.html',
+                           character=char,
+                           available_spells=available_spells)
+
+@app.route('/characters/<int:char_id>/level_up', methods=['GET', 'POST'])
+def level_up_character(char_id):
+    character = Character.query.get_or_404(char_id)
+
+    # --- GET: show level up page ---
+    if request.method == 'GET':
+        # Pre-calculate info to display
+        character.max_hp_before = character.max_hp
+        character.max_hp_after = character.calculate_max_hp()
+
+        character.spell_slots_before = character.spell_slots.copy() if character.spell_slots else {i: 0 for i in range(1, 6)}
+        character.spell_slots_after = character.get_new_spell_slots() if hasattr(character, 'get_new_spell_slots') else character.spell_slots_before
+
+        new_features = character.get_new_features_for_level() if hasattr(character, 'get_new_features_for_level') else []
+        asi_options = character.get_asi_options() if hasattr(character, 'get_asi_options') else []
+
+        return render_template(
+            'level_up.html',
+            character=character,
+            new_features=new_features,
+            asi_options=asi_options
+        )
+
+    # --- POST: apply level up ---
+    if request.method == 'POST':
+        # Apply ASI choice if any
+        asi_choice = request.form.get('asi_choice')
+        if asi_choice:
+            character.apply_asi_choice(int(asi_choice))  # implement this in your Character model
+
+        # Apply feature choices if any
+        new_features = character.get_new_features_for_level() if hasattr(character, 'get_new_features_for_level') else []
+        for feature in new_features:
+            choice = request.form.get(f'feature_{feature.id}')
+            if choice:
+                character.apply_feature_choice(feature, int(choice))  # implement this in your Character model
+
+        # Apply new spells if any
+        new_spell_ids = request.form.getlist('new_spells')
+        if new_spell_ids:
+            character.learn_new_spells([int(sid) for sid in new_spell_ids])  # implement in Character model
+
+        # Finalize level up (updates level, HP, spell slots, etc.)
+        character.level_up()
+
+        db.session.commit()
+        flash(f"{character.name} is now level {character.level}!", "success")
+        return redirect(url_for('character_details', char_id=character.id))
+
+
+@app.route("/characters/<int:char_id>/prepare_spells", methods=["POST"])
+def prepare_spells(char_id: int):
+    char = Character.query.get_or_404(char_id)
+
+    cls = _class_row_for(char)
+    max_prepared = 0
+    if cls and cls.prepares_spells:
+        ability = (cls.spellcasting_ability or "").lower()
+        sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
+        ability_score = sc_map.get(ability, 10)
+        max_prepared = max(1, char.level + ability_mod(ability_score))
+
+    ids = request.form.getlist("prepared_spells")
+    ids_int = []
+    for x in ids:
+        try:
+            ids_int.append(int(x))
+        except Exception:
+            pass
+
+    known_ids = {s.id for s in (char.spells or [])}
+    ids_int = [i for i in ids_int if i in known_ids]
+
+    if max_prepared and len(ids_int) > max_prepared:
+        ids_int = ids_int[:max_prepared]
+        flash(f"Prepared spell limit reached ({max_prepared}). Extra selections were ignored.", "warning")
+
+    chosen = Spell.query.filter(Spell.id.in_(ids_int)).all()
+    char.prepared_spells = chosen
+
+    db.session.commit()
+    flash("Prepared spells saved.", "success")
+    return redirect(url_for("character_details", char_id=char.id))
+
+@app.route("/race/<race_name>")
+def show_race(race_name):
+    race = RaceModel.query.filter_by(name=race_name).first_or_404()
+    features = RaceFeature.query.filter_by(race_id=race.id).all()
+    return render_template("race_details.html", race=race, features=features)
+
+@app.route("/class/<class_name>")
+def show_character_class(class_name):
+    char_class = CharacterClassModel.query.filter_by(name=class_name).first_or_404()
+    features = char_class.features_up_to(20)  # show all up to level 20
+    return render_template("characterclass_details.html", character_class=char_class, features=features)
+
+
+if __name__ == '__main__':
+    # You can also run with `flask run` if you prefer
+     socketio.run(app, host="0.0.0.0", port=5000, debug=True, use_reloader=True)
+
+

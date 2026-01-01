@@ -1,0 +1,21 @@
+services:
+  web:
+    build: .
+    container_name: dnd-web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./instance:/app/instance
+      - ./logs:/app/logs
+    environment:
+      FLASK_ENV: development
+      REDIS_HOST: redis
+      DATABASE_URL: sqlite:///instance/characters.db
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: dnd-redis
+    restart: unless-stopped

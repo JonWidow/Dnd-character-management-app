@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ spell['name'] }} - Spell Details{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-3xl font-bold mb-4 text-blue-800">{{ spell['name'] }}</h1>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4 text-gray-700 text-sm">
+        <div><strong>Level:</strong> {{ spell['level'] }}</div>
+        <div><strong>School:</strong> {{ spell['school'] }}</div>
+        <div><strong>Casting Time:</strong> {{ spell['casting_time'] }}</div>
+        <div><strong>Duration:</strong> {{ spell['duration'] }}</div>
+        <div><strong>Range:</strong> {{ spell['range'] }}</div>
+        <div><strong>Components:</strong> {{ spell['components'] }}</div>
+    </div>
+
+    {% if spell['material'] %}
+    <p class="mb-4"><strong>Material:</strong> {{ spell['material'] }}</p>
+    {% endif %}
+
+    <h2 class="text-xl font-semibold mb-2">Description</h2>
+    <p class="whitespace-pre-wrap mb-4">{{ spell['description'] }}</p>
+
+    {% if spell['higher_level'] %}
+    <h2 class="text-xl font-semibold mb-2">At Higher Levels</h2>
+    <p class="whitespace-pre-wrap">{{ spell['higher_level'] }}</p>
+    {% endif %}
+</div>
+{% endblock %}

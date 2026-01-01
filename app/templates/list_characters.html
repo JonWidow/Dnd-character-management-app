@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Characters{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-6">
+    <h1 class="text-3xl font-bold mb-4 text-blue-800">Characters</h1>
+
+    <input type="text" id="search-bar" placeholder="Search characters..." class="w-full sm:w-1/2 p-2 rounded border mb-4">
+
+    <div id="results" class="space-y-2"></div>
+</div>
+
+<script>
+const searchBar = document.getElementById('search-bar');
+const resultsDiv = document.getElementById('results');
+let timeout = null;
+
+// Fetch all characters initially
+async function fetchCharacters(query='') {
+    const res = await fetch(`/api/characters?q=${encodeURIComponent(query)}`);
+    const characters = await res.json();
+
+    resultsDiv.innerHTML = characters.map(c => `
+        <div class="bg-white rounded shadow p-3 hover:bg-gray-50">
+            <a href="/characters/${c.id}" target="_blank" class="text-blue-600 font-semibold hover:underline">
+                ${c.name} (Level ${c.level}, ${c.char_class})
+            </a>
+        </div>
+    `).join('');
+}
+
+// Initial load
+fetchCharacters();
+
+// Search handler
+searchBar.addEventListener('input', () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => {
+        fetchCharacters(searchBar.value.trim());
+    }, 300);
+});
+</script>
+{% endblock %}

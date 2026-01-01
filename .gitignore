@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.env/
+.env.*
+
+# Docker
+*.log
+
+# App runtime data
+logs/
+instance/*.db
+
+# OS
+.DS_Store

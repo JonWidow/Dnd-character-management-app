@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Add New Character{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-4 text-blue-800">Enter New Character Information</h1>
+
+    <form action="{{ url_for('add_character') }}" method="post" class="space-y-4">
+        <div>
+            <label for="name" class="block font-medium">Name:</label>
+            <input type="text" id="name" name="name" required class="w-full border rounded p-2">
+        </div>
+
+        <div>
+            <label for="char_class" class="block font-medium">Class:</label>
+            <input type="text" id="char_class" name="char_class" required class="w-full border rounded p-2">
+        </div>
+
+        <div>
+            <label for="race" class="block font-medium">Race:</label>
+            <input type="text" id="race" name="race" required class="w-full border rounded p-2">
+        </div>
+
+        <div>
+            <label for="level" class="block font-medium">Level:</label>
+            <input type="number" id="level" name="level" min="1" value="1" class="w-24 border rounded p-2">
+        </div>
+
+        <fieldset class="border border-gray-300 p-4 rounded">
+            <legend class="font-medium">Ability Scores</legend>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
+                <div>
+                    <label for="str_sc">Strength:</label>
+                    <input type="number" id="str_sc" name="str_sc" value="10" class="w-full border rounded p-1">
+                </div>
+                <div>
+                    <label for="dex_sc">Dexterity:</label>
+                    <input type="number" id="dex_sc" name="dex_sc" value="10" class="w-full border rounded p-1">
+                </div>
+                <div>
+                    <label for="con_sc">Constitution:</label>
+                    <input type="number" id="con_sc" name="con_sc" value="10" class="w-full border rounded p-1">
+                </div>
+                <div>
+                    <label for="int_sc">Intelligence:</label>
+                    <input type="number" id="int_sc" name="int_sc" value="10" class="w-full border rounded p-1">
+                </div>
+                <div>
+                    <label for="wis_sc">Wisdom:</label>
+                    <input type="number" id="wis_sc" name="wis_sc" value="10" class="w-full border rounded p-1">
+                </div>
+                <div>
+                    <label for="cha_sc">Charisma:</label>
+                    <input type="number" id="cha_sc" name="cha_sc" value="10" class="w-full border rounded p-1">
+                </div>
+            </div>
+        </fieldset>
+
+        <button type="submit" class="bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-700 mt-4">Submit</button>
+    </form>
+</div>
+{% endblock %}

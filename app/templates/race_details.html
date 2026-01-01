@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ race.name }} - D&D Races</title>
+    <style>
+        body {
+            font-family: Georgia, serif;
+            max-width: 900px;
+            margin: auto;
+            padding: 2rem;
+            background-color: #f9f9f9;
+            color: #222;
+        }
+        h1 {
+            font-size: 2.5rem;
+            border-bottom: 2px solid #444;
+            padding-bottom: 0.5rem;
+        }
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2rem;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 0.3rem;
+        }
+        p {
+            line-height: 1.6;
+        }
+        ul {
+            list-style-type: disc;
+            margin-left: 2rem;
+        }
+        .ability-bonuses {
+            background-color: #eee;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            display: inline-block;
+            margin-top: 0.5rem;
+        }
+        .feature {
+            margin-bottom: 1.5rem;
+        }
+        .feature-name {
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin-bottom: 0.2rem;
+        }
+        .feature-description {
+            white-space: pre-wrap;
+        }
+        .languages-list {
+            margin-left: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ race.name }}</h1>
+
+    <h2>Quick Info</h2>
+    <p><strong>Speed:</strong> {{ race.speed }} feet</p>
+    {% if race.size %}<p><strong>Size:</strong> {{ race.size }} - {{ race.size_description }}</p>{% endif %}
+    {% if race.alignment %}<p><strong>Alignment:</strong> {{ race.alignment }}</p>{% endif %}
+    {% if race.age %}<p><strong>Age:</strong> {{ race.age }}</p>{% endif %}
+    <p><strong>Ability Bonuses:</strong></p>
+    <div class="ability-bonuses">
+        {% for stat, bonus in race.ability_bonuses.items() %}
+            {{ stat }} +{{ bonus }}{% if not loop.last %}, {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if race.languages %}
+    <h2>Languages</h2>
+    <ul class="languages-list">
+        {% for lang in race.languages %}
+            <li>
+                <strong>{{ lang.name }}</strong>
+                {% if lang.desc %}- {{ lang.desc }}{% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if race.description %}
+    <h2>Description</h2>
+    <p>{{ race.description }}</p>
+    {% endif %}
+
+    {% if features %}
+    <h2>Racial Features / Traits</h2>
+    {% for feature in features %}
+    <div class="feature">
+        <div class="feature-name">{{ feature.name }}</div>
+        <div class="feature-description">{{ feature.description }}</div>
+    </div>
+    {% endfor %}
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,264 @@
+from . import db
+from models.character_struct import *
+
+character_spells = db.Table(
+    'character_spells',
+    db.Column('character_id', db.Integer, db.ForeignKey('character.id'), primary_key=True),
+    db.Column('spell_id', db.Integer, db.ForeignKey('spell.id'), primary_key=True),
+)
+
+# NEW: Character ⇄ Spell (prepared spells)
+character_prepared_spells = db.Table(
+    'character_prepared_spells',
+    db.Column('character_id', db.Integer, db.ForeignKey('character.id'), primary_key=True),
+    db.Column('spell_id', db.Integer, db.ForeignKey('spell.id'), primary_key=True),
+)
+
+
+character_features = db.Table(
+    'character_features',
+    db.Column('character_id', db.Integer, db.ForeignKey('character.id'), primary_key=True),
+    db.Column('feature_id', db.Integer, db.ForeignKey('character_class_features.id'), primary_key=True),
+    db.Column('choice_index', db.Integer, nullable=True)
+)
+
+
+ABILITY_ORDER = ["str_sc", "dex_sc", "con_sc", "int_sc", "wis_sc", "cha_sc"]
+
+class Character(db.Model):
+    __tablename__ = 'character'
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), nullable=False)
+
+    char_class_name = db.Column(db.String(50), nullable=False)
+    char_class_id = db.Column( db.Integer, db.ForeignKey("character_classes.id"), nullable=True)
+
+
+    race = db.Column(db.String(50), nullable=False)
+    level = db.Column(db.Integer, default=1)
+
+    str_sc = db.Column(db.Integer, default=10)
+    dex_sc = db.Column(db.Integer, default=10)
+    con_sc = db.Column(db.Integer, default=10)
+    int_sc = db.Column(db.Integer, default=10)
+    wis_sc = db.Column(db.Integer, default=10)
+    cha_sc = db.Column(db.Integer, default=10)
+
+    max_hp = db.Column(db.Integer, default=0)
+    current_hp = db.Column(db.Integer, default=0)
+
+    spells = db.relationship('Spell', secondary='character_spells', back_populates='known_by')
+
+    #spell_slots = db.relationship("Character", backref=db.backref("spell_slots", cascade="all, delete-orphan"))
+
+    features = db.relationship('CharacterClassFeature', secondary=character_features)
+
+    char_class = db.relationship("CharacterClassModel", backref="Characters")
+
+    def __init__(self, name, char_class, race, ability_scores=None, level=1):
+        self.name = name
+
+        # Accept either string or model
+        if isinstance(char_class, str):
+            self.char_class_name = char_class
+        else:
+            self.char_class = char_class
+            self.char_class_name = char_class.name
+
+        self.race = race
+        self.level = level
+
+        if ability_scores:
+            for attr, score in zip(ABILITY_ORDER, ability_scores):
+                setattr(self, attr, score)
+
+    @property
+    def abilities(self):
+        return {attr: getattr(self, attr) for attr in ABILITY_ORDER}
+
+    @property
+    def known_spells_count(self):
+        return len(self.spells or [])
+
+
+    def sc_to_mod(self, score):
+        return (score - 10) // 2
+
+    # NEW: prepared spells (separate from known spells)
+    prepared_spells = db.relationship(
+        'Spell',
+        secondary='character_prepared_spells',
+        back_populates='prepared_by'
+    )
+
+
+    def calculate_max_hp(self):
+
+        con_mod = self.sc_to_mod(self.con_sc)  # assuming you have a method or property for CON mod
+        # Base HP is first level full hit die
+        hp = self.char_class.hit_die + con_mod #level 1
+
+        # Additional levels
+        for _ in range(1, self.level):
+            # Assuming average hit die per level; adjust if rolling
+            avg = (self.char_class.hit_die // 2) + 1
+            hp += avg + con_mod
+
+        return hp
+
+    def get_spell_slots_dict(self):
+        """Return {level: (remaining, total)} for all spell levels."""
+        return {slot.level: (slot.remaining_slots, slot.total_slots) for slot in self.spell_slots}
+
+    def get_max_spell_slots(self):
+        """
+        Returns a dict {1: max1, 2: max2, ..., 9: max9}
+        of the maximum spell slots for this character at their current level.
+        """
+        if not self.char_class_id or self.level < 1:
+            return {i: 0 for i in range(1, 10)}
+
+        row = ClassSpellSlots.query.filter_by(
+            class_id=self.char_class_id,
+            class_level=self.level
+        ).first()
+
+        if not row:
+            return {i: 0 for i in range(1, 10)}
+
+        return {
+            1: row.slot_1,
+            2: row.slot_2,
+            3: row.slot_3,
+            4: row.slot_4,
+            5: row.slot_5,
+            6: row.slot_6,
+            7: row.slot_7,
+            8: row.slot_8,
+            9: row.slot_9,
+        }
+
+    def get_current_spell_slots(self):
+        """
+        Returns a dict {1: remaining1, 2: remaining2, ..., 9: remaining9}.
+        If no CharacterSpellSlot rows exist, returns max slots.
+        """
+        # Build a dict with all 0 as fallback
+        slots = {i: 0 for i in range(1, 10)}
+
+        if hasattr(self, "spell_slots") and self.spell_slots:
+            # Loop through CharacterSpellSlot rows
+            for row in self.spell_slots:
+                # Only levels 1..9
+                if 1 <= row.level <= 9:
+                    slots[row.level] = row.remaining_slots
+        else:
+            # fallback: use max slots if none stored
+            slots = self.get_max_spell_slots()
+
+        return slots
+
+
+  # --- Level-Up Method ---
+    def level_up(self):
+        new_level = self.level + 1
+        self.level = new_level
+        print(f"{self.name} is now level {new_level}!")
+
+        # --- 1. Ability Score Improvement / Feat ---
+        ASI_LEVELS = {
+            "Fighter": [4, 6, 8, 12, 14, 16, 19],
+            "Paladin": [4, 8, 12, 16, 19],
+            "Rogue": [4, 8, 10, 12, 16, 19],
+            "Bard": [4, 8, 12, 16, 19],
+            # add other classes as needed
+        }
+
+        if self.char_class in ASI_LEVELS and new_level in ASI_LEVELS[self.char_class]:
+            self.pending_asi = True  # flag for UI / player choice
+            print(f"{self.name} gains an Ability Score Improvement!")
+
+        # --- 2. Hit Points Increase ---
+
+        self.max_hp = self.calculate_max_hp()
+        self.current_hp = self.max_hp
+
+        # --- 3. Spellcasting Updates ---
+        cls = self.char_class
+        if cls and (cls.prepares_spells or cls.spellcasting_ability):
+            class_level_entry = ClassLevel.query.filter_by( class_id=cls.id, level=new_level).first()
+
+        if class_level_entry:
+            # Loop through possible spell levels (1-5 for now)
+            for lvl in range(1, 6):
+                slots_attr = f"spell{lvl}"
+                num_slots = getattr(class_level_entry, slots_attr, 0)
+                if num_slots > 0:
+                    # Check if a CharacterSpellSlot exists already
+                    slot = CharacterSpellSlot.query.filter_by(character_id=self.id, level=lvl).first()
+                    if not slot:
+                        slot = CharacterSpellSlot(
+                            character_id=self.id,
+                            level=lvl,
+                            total_slots=num_slots,
+                            remaining_slots=num_slots
+                        )
+                        db.session.add(slot)
+                    else:
+                        # Update total and remaining slots (optional: preserve remaining if some already used)
+                        used = slot.total_slots - slot.remaining_slots
+                        slot.total_slots = num_slots
+                        slot.remaining_slots = max(0, num_slots - used)
+
+            print(f"{self.name}'s spell slots updated.")
+
+        self.pending_spell_update = True  # UI can prompt for new spells
+
+        # --- 4. Derived Stats Update ---
+        self.proficiency_bonus = 2 + ((new_level - 1) // 4)
+        if self.char_class and self.char_class.spellcasting_ability:
+            ability = self.char_class.spellcasting_ability.lower() + "_sc"
+            ability_mod = (getattr(self, ability) - 10) // 2
+            self.spell_attack_bonus = self.proficiency_bonus + ability_mod
+            self.spell_save_dc = 8 + self.proficiency_bonus + ability_mod
+            print(f"{self.name}'s spell attack bonus: {self.spell_attack_bonus}, spell save DC: {self.spell_save_dc}")
+
+        # --- 5. Class Features ---
+        # TODO: Grant new features unlocked at this level
+        # Example:
+        # new_features = self.char_class.features_up_to(new_level)
+        # for feat in new_features:
+        #     if feat not in self.features:
+        #         self.features.append(feat)
+        #         if feat.choices:
+        #             self.pending_feature_choice = feat  # UI can prompt for selection
+
+        db.session.add(self)
+        db.session.commit()
+        print(f"{self.name} has successfully leveled up!")
+
+
+    def update_character_spell_slots(character):
+        # Fetch class-level slots
+        class_slots = ClassSpellSlots.query.filter_by(
+            class_id=character.class_id,
+            class_level=character.level
+        ).first()
+
+        # Either create or update existing character spell slots
+        if not character.spell_slots:
+            char_slots = CharacterSpellSlots(character_id=character.id)
+            db.session.add(char_slots)
+        else:
+            char_slots = character.spell_slots[0]  # assuming 1 row per character
+
+        for i in range(1, 10):
+            used_attr = f"slot_{i}_used"
+            # Keep used slots <= max slots
+            char_slots.__setattr__(used_attr, min(
+                getattr(char_slots, used_attr, 0),
+                getattr(class_slots, f"slot_{i}")
+            ))
+
+        db.session.commit()
