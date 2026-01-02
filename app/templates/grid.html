@@ -1,11 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>D&D Combat Grid</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #1a1a1a;
+            overflow: hidden;
+        }
+
+        #header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 30px;
+            border-bottom: 2px solid #34495e;
+            flex-shrink: 0;
+            min-height: 70px;
+        }
+
+        .title {
+            min-width: fit-content;
+        }
+
+        .title h1 {
+            font-size: 22px;
+            margin-bottom: 5px;
+        }
+
+        .title p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        input[type="text"] {
+            padding: 8px 12px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 150px;
+        }
+
+        input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        button:hover {
+            background-color: #229954;
+        }
+
+        button:active {
+            background-color: #1e8449;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+
+        #grid-container {
+            flex: 1;
+            background: #444;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        /* Context menu */
+        #contextMenu {
+            display: none;
+            position: fixed;
+            background: white;
+            border: 2px solid #333;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            min-width: 150px;
+        }
+
+        .context-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            color: #333;
+        }
+
+        .context-item:last-child {
+            border-bottom: none;
+        }
+
+        .context-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .context-item.danger {
+            color: #e74c3c;
+        }
+
+        .context-item.danger:hover {
+            background-color: #fadbd8;
+        }
+
+        @media (max-width: 768px) {
+            #header {
+                flex-wrap: wrap;
+                gap: 10px;
+                min-height: auto;
+            }
+
+            .title {
+                width: 100%;
+            }
+
+            .controls {
+                width: 100%;
+                gap: 8px;
+            }
+
+            input[type="text"] {
+                flex: 1;
+                min-width: 100px;
+            }
+
+            button {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
 <body>
-    <div id="grid-container"></div>
+    <div id="container">
+        <div id="header">
+            <div class="title">
+                <h1>⚔️ Combat Grid</h1>
+                <p>Code: {{ code }}</p>
+            </div>
+            <div class="controls">
+                <input type="text" id="tokenName" placeholder="Token name" value="Token">
+                <input type="color" id="tokenColor" value="#ff6b6b">
+                <button id="addTokenBtn">➕ Add Token</button>
+            </div>
+        </div>
+        <div id="grid-container"></div>
+    </div>
+
+    <!-- Context Menu -->
+    <div id="contextMenu">
+        <div class="context-item" id="deleteToken">🗑️ Delete</div>
+        <div class="context-item" id="bringToFront">⬆️ Bring to Front</div>
+        <div class="context-item" id="sendToBack">⬇️ Send to Back</div>
+    </div>
+
+    <!-- Konva.js library -->
+    <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
     <script>
         const GRID_CODE = "{{ code }}";
     </script>
 
-    <script src="{{ url_for('static', filename='grid/grid.js') }}"></script>
-    <script src="{{ url_for('static', filename='grid/events.js') }}"></script>
-    <script src="{{ url_for('static', filename='grid/ui.js') }}"></script>
-    <script src="{{ url_for('static', filename='grid/tokens.js') }}"></script>
+    <!-- Grid modules -->
+    <script type="module">
+        import * as gridModule from "{{ url_for('static', filename='grid/grid.js') }}";
+        import * as tokensModule from "{{ url_for('static', filename='grid/tokens.js') }}";
+
+        // Initialize the grid
+        gridModule.drawDebugGrid();
+        
+        // Setup socket.io
+        const socket = io();
+        socket.emit('join_grid', { code: GRID_CODE, user: 'player' });
+        socket.emit('request_state', { code: GRID_CODE });
+
+        // Add token button handler
+        document.getElementById('addTokenBtn').addEventListener('click', () => {
+            const name = document.getElementById('tokenName').value || 'Token';
+            const color = document.getElementById('tokenColor').value;
+            tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, name, color);
+        });
+
+        // Enter key to add token
+        document.getElementById('tokenName').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('addTokenBtn').click();
+            }
+        });
+
+        // Pass context menu and layer to tokens module
+        tokensModule.initContextMenu(gridModule.stage, gridModule.tokenLayer);
+    </script>
 </body>
+</html>
