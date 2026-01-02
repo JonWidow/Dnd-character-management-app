@@ -165,6 +165,7 @@ async function showCharacterStats(characterId, x, y) {
 }
 
 async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
+    console.log('toggleSpellSlot called:', { characterId, slotId, slotIndex });
     event.stopPropagation();
     try {
         // Determine if we're using or restoring the slot based on which slot was clicked
@@ -173,10 +174,14 @@ async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
         const computedStyle = window.getComputedStyle(btn);
         const bgColor = computedStyle.backgroundColor;
         
+        console.log('Button color:', bgColor);
+        
         // Check if button is red (used) or blue (available)
         // Red: rgb(239, 68, 68) or #ef4444
         // Blue: rgb(59, 130, 246) or #3b82f6
         const isUsed = bgColor.includes('239') || bgColor === '#ef4444';
+        
+        console.log('Is used:', isUsed, 'Will use_slot:', !isUsed);
         
         // Use the grid-specific endpoint (no auth required)
         const response = await fetch(`/grid/spell-slots/${slotId}/toggle`, {
@@ -187,11 +192,14 @@ async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
             body: JSON.stringify({ use_slot: !isUsed })
         });
         
+        console.log('Toggle response:', response.status);
+        
         if (response.ok) {
             // Refresh the stats panel to show updated spell slot state
             const statsPanel = document.getElementById('statsPanel');
             const panelLeft = parseInt(statsPanel.style.left);
             const panelTop = parseInt(statsPanel.style.top);
+            console.log('Refreshing stats panel at', panelLeft, panelTop);
             await showCharacterStats(characterId, panelLeft, panelTop);
         } else {
             const errorData = await response.json();
@@ -392,3 +400,6 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
 export function addTestToken() {
     addToken(stage, tokenLayer, "Test", "#ff0000");
 }
+
+// Make toggleSpellSlot globally available for onclick handlers
+window.toggleSpellSlot = toggleSpellSlot;
