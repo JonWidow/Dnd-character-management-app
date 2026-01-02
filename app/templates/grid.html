@@ -246,15 +246,15 @@
     </div>
 
     <!-- Character Stats Panel -->
-    <div id="statsPanel" style="display: none; position: fixed; background: white; border: 2px solid #333; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); padding: 12px; min-width: 240px; z-index: 1000; font-size: 13px;">
-        <div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;" id="characterName"></div>
+    <div id="statsPanel" style="display: none; position: fixed; background: white; border: 2px solid #333; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); padding: 12px; width: 320px; max-height: 85vh; z-index: 1000; font-size: 13px; overflow-y: auto; overflow-x: hidden;">
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px; position: sticky; top: 0; background: white; z-index: 1;" id="characterName"></div>
         <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-            <span style="min-width: 20px;">HP:</span>
+            <span style="min-width: 20px; font-weight: 500;">HP:</span>
             <input type="number" id="characterCurrentHP" style="width: 45px; padding: 4px; border: 1px solid #999; border-radius: 3px; font-size: 12px;" min="0">
             <span>/</span>
             <span id="characterMaxHP" style="font-weight: bold; min-width: 25px;"></span>
         </div>
-        <div id="spellSlotsContainer" style="margin-top: 8px;"></div>
+        <div id="spellSlotsContainer" style="margin-top: 8px; padding-bottom: 4px;"></div>
     </div>
 
     <!-- Konva.js library -->

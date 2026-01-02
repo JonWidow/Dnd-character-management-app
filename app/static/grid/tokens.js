@@ -130,7 +130,7 @@ async function showCharacterStats(characterId, x, y) {
         // Display spell slots with visual indicators
         const spellSlotsContainer = document.getElementById('spellSlotsContainer');
         if (character.spell_slots && character.spell_slots.length > 0) {
-            let slotsHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">';
+            let slotsHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">';
             character.spell_slots.forEach(slot => {
                 // Create visual slot boxes like character details
                 let slotBoxes = '';
@@ -139,16 +139,16 @@ async function showCharacterStats(characterId, x, y) {
                     const bgColor = isUsed ? '#ef4444' : '#3b82f6';  // red if used, blue if available
                     const borderColor = isUsed ? '#dc2626' : '#1d4ed8';
                     slotBoxes += `<button type="button" 
-                        style="width: 20px; height: 20px; margin: 2px; background-color: ${bgColor}; border: 2px solid ${borderColor}; border-radius: 3px; font-size: 10px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0; font-weight: bold; transition: all 0.2s;"
+                        style="width: 18px; height: 18px; margin: 1px; background-color: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 2px; font-size: 9px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0; font-weight: bold; transition: all 0.2s;"
                         data-slot-id="${slot.id}"
                         data-slot-index="${i}"
                         data-character-id="${characterId}"
                         class="spell-slot-btn"
                         onclick="toggleSpellSlot(event, ${characterId}, ${slot.id}, ${i})">${i}</button>`;
                 }
-                slotsHTML += `<div style="margin-top: 4px; font-size: 12px;">
-                    <span style="font-weight: bold;">Lvl ${slot.level}</span>
-                    <div style="margin-top: 2px;">${slotBoxes}</div>
+                slotsHTML += `<div style="font-size: 11px; min-width: 0;">
+                    <div style="font-weight: bold; margin-bottom: 2px;">Lvl ${slot.level}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 1px;">${slotBoxes}</div>
                 </div>`;
             });
             slotsHTML += '</div>';
