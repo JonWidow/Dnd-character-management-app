@@ -1,7 +1,9 @@
 # /opt/dnd/grid/__init__.py
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify
 from app.extensions import socketio
 from flask_socketio import join_room, leave_room, emit
+from flask_login import current_user
+from app.models.character import Character
 
 # All grid routes will live under /grid/...
 grid_bp = Blueprint("grid", __name__, url_prefix="/grid")
@@ -20,10 +22,22 @@ def _get_grid(code: str):
         grids[code] = g
     return g
 
-# ---------- HTTP route ----------
+# ---------- HTTP routes ----------
 @grid_bp.route("/<code>")
 def grid_view(code):
     return render_template("grid.html", code=code)
+
+@grid_bp.route("/api/characters")
+def get_characters():
+    """Fetch current user's characters for token spawning"""
+    if not current_user.is_authenticated:
+        return jsonify([])
+    
+    characters = Character.query.filter_by(user_id=current_user.id).all()
+    return jsonify([
+        {"id": c.id, "name": c.name}
+        for c in characters
+    ])
 
 # ---------- Socket.IO handlers ----------
 @socketio.on("join_grid")

@@ -65,6 +65,54 @@
             border-radius: 4px;
             font-size: 14px;
             width: 150px;
+            position: relative;
+        }
+
+        .character-input-wrapper {
+            position: relative;
+            width: 180px;
+        }
+
+        #tokenName {
+            width: 100%;
+        }
+
+        #characterDropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #bdc3c7;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        #characterDropdown.show {
+            display: block;
+        }
+
+        .character-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 14px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .character-option:hover {
+            background-color: #ecf0f1;
+            color: #1a252f;
+        }
+
+        .character-option:last-child {
+            border-bottom: none;
         }
 
         input[type="color"] {
@@ -180,7 +228,10 @@
                 <p>Code: {{ code }}</p>
             </div>
             <div class="controls">
-                <input type="text" id="tokenName" placeholder="Token name" value="Token">
+                <div class="character-input-wrapper">
+                    <input type="text" id="tokenName" placeholder="Character or token name" value="">
+                    <div id="characterDropdown"></div>
+                </div>
                 <input type="color" id="tokenColor" value="#ff6b6b">
                 <button id="addTokenBtn">➕ Add Token</button>
             </div>
@@ -218,22 +269,127 @@
         socket.emit('join_grid', { code: GRID_CODE, user: 'player' });
         socket.emit('request_state', { code: GRID_CODE });
 
+        // Character dropdown setup
+        const tokenNameInput = document.getElementById('tokenName');
+        const characterDropdown = document.getElementById('characterDropdown');
+        let selectedCharacterId = null;
+
+        // Fetch and display characters
+        async function loadCharacters() {
+            try {
+                const response = await fetch('{{ url_for("grid.get_characters") }}');
+                const characters = await response.json();
+                
+                // Show dropdown on focus
+                tokenNameInput.addEventListener('focus', () => {
+                    if (characters.length > 0) {
+                        characterDropdown.innerHTML = characters.map(char => 
+                            `<div class="character-option" data-id="${char.id}" data-name="${char.name}">${char.name}</div>`
+                        ).join('');
+                        characterDropdown.classList.add('show');
+                    }
+                });
+
+                // Filter and show matching characters as user types
+                tokenNameInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase();
+                    const filtered = characters.filter(char => 
+                        char.name.toLowerCase().includes(query)
+                    );
+                    
+                    if (query && filtered.length > 0) {
+                        characterDropdown.innerHTML = filtered.map(char =>
+                            `<div class="character-option" data-id="${char.id}" data-name="${char.name}">${char.name}</div>`
+                        ).join('');
+                        characterDropdown.classList.add('show');
+                    } else if (!query) {
+                        characterDropdown.classList.remove('show');
+                    } else {
+                        characterDropdown.classList.remove('show');
+                    }
+                });
+
+                // Handle character selection
+                characterDropdown.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('character-option')) {
+                        selectedCharacterId = e.target.dataset.id;
+                        tokenNameInput.value = e.target.dataset.name;
+                        characterDropdown.classList.remove('show');
+                    }
+                });
+
+                // Hide dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (e.target !== tokenNameInput && e.target !== characterDropdown) {
+                        characterDropdown.classList.remove('show');
+                    }
+                });
+            } catch (err) {
+                console.error('Failed to load characters:', err);
+            }
+        }
+
+        loadCharacters();
+
         // Add token button handler
         document.getElementById('addTokenBtn').addEventListener('click', () => {
             const name = document.getElementById('tokenName').value || 'Token';
             const color = document.getElementById('tokenColor').value;
-            tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, name, color);
+            const characterId = selectedCharacterId;
+            
+            // Reset for next token
+            selectedCharacterId = null;
+            document.getElementById('tokenName').value = '';
+            
+            tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, name, color, characterId);
         });
 
         // Enter key to add token
         document.getElementById('tokenName').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !document.getElementById('characterDropdown').classList.contains('show')) {
                 document.getElementById('addTokenBtn').click();
             }
         });
 
         // Pass context menu and layer to tokens module
         tokensModule.initContextMenu(gridModule.stage, gridModule.tokenLayer);
+
+        // Close context menu on tap/click outside
+        const gridContainer = document.getElementById('grid-container');
+        const contextMenu = document.getElementById('contextMenu');
+        let menuOpenTime = 0;
+        let hasNewTouchAfterMenu = false;
+        
+        // Track when menu opens
+        const menuObserver = new MutationObserver(() => {
+            if (contextMenu.style.display === 'block') {
+                menuOpenTime = Date.now();
+                hasNewTouchAfterMenu = false;
+            }
+        });
+        menuObserver.observe(contextMenu, { attributes: true });
+
+        // Track new touch events
+        gridContainer.addEventListener('touchstart', (e) => {
+            // If menu is open, mark that we've had a new touch
+            if (contextMenu.style.display === 'block') {
+                hasNewTouchAfterMenu = true;
+            }
+        });
+
+        gridContainer.addEventListener('touchend', (e) => {
+            // Only close if a NEW touch happened after menu opened
+            if (hasNewTouchAfterMenu && !contextMenu.contains(e.target)) {
+                contextMenu.style.display = 'none';
+                hasNewTouchAfterMenu = false;
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (e.target.id !== 'contextMenu' && !e.target.closest('#contextMenu')) {
+                contextMenu.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>

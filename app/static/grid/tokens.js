@@ -24,6 +24,10 @@ function showContextMenu(x, y, token) {
 
     // Delete handler
     document.getElementById('deleteToken').onclick = () => {
+        // Destroy the label if it exists
+        if (token.label) {
+            token.label.destroy();
+        }
         token.destroy();
         contextMenuLayer.draw();
         menu.style.display = 'none';
@@ -51,7 +55,7 @@ document.addEventListener('click', (e) => {
     }
 });
 
-export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000") {
+export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", characterId = null) {
     const x = stageRef.width() / 2;
     const y = stageRef.height() / 2;
     
@@ -68,7 +72,8 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000") 
         strokeWidth: 2,
         hitStrokeWidth: 2,
         draggable: true,
-        name: name
+        name: name,
+        characterId: characterId
     });
 
     const label = new Konva.Text({
@@ -82,9 +87,13 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000") 
         verticalAlign: "middle",
         width: tokenRadius * 2,
         pointerEvents: "none",
+        listening: false,
         offsetX: tokenRadius,
         offsetY: 7
     });
+
+    // Store label reference on token for easy deletion
+    token.label = label;
 
     layerRef.add(token);
     layerRef.add(label);
