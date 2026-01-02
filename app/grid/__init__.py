@@ -231,3 +231,33 @@ def on_remove_token(data):
     
     print(f"[socket] remove in {code}: id={tid}")
     emit("token_removed", {"token_id": tid}, to=_room(code))
+
+@grid_bp.route("/spell-slots/<int:slot_id>/toggle", methods=["POST"])
+def toggle_spell_slot_grid(slot_id):
+    """Toggle a spell slot for the grid (no auth required for testing)."""
+    from app.models.spell_slots import CharacterSpellSlot
+    from flask import request
+    
+    try:
+        slot = CharacterSpellSlot.query.get_or_404(slot_id)
+        data = request.get_json() or {}
+        use_slot = data.get('use_slot', True)
+        
+        if use_slot:
+            # User wants to use a slot (decrement remaining)
+            if slot.remaining_slots > 0:
+                slot.remaining_slots -= 1
+        else:
+            # User wants to restore a slot (increment remaining)
+            if slot.remaining_slots < slot.total_slots:
+                slot.remaining_slots += 1
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'remaining_slots': slot.remaining_slots,
+            'total_slots': slot.total_slots
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500

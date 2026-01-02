@@ -170,9 +170,16 @@ async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
         // Determine if we're using or restoring the slot based on which slot was clicked
         // If clicking on used slots (red), restore it; if clicking on available slots (blue), use it
         const btn = event.target;
-        const isUsed = btn.style.backgroundColor === 'rgb(239, 68, 68)' || btn.style.backgroundColor === '#ef4444';
+        const computedStyle = window.getComputedStyle(btn);
+        const bgColor = computedStyle.backgroundColor;
         
-        const response = await fetch(`/api/characters/${characterId}/spell-slots/${slotId}/toggle`, {
+        // Check if button is red (used) or blue (available)
+        // Red: rgb(239, 68, 68) or #ef4444
+        // Blue: rgb(59, 130, 246) or #3b82f6
+        const isUsed = bgColor.includes('239') || bgColor === '#ef4444';
+        
+        // Use the grid-specific endpoint (no auth required)
+        const response = await fetch(`/grid/spell-slots/${slotId}/toggle`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -187,7 +194,8 @@ async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
             const panelTop = parseInt(statsPanel.style.top);
             await showCharacterStats(characterId, panelLeft, panelTop);
         } else {
-            console.error('Failed to toggle spell slot');
+            const errorData = await response.json();
+            console.error('Failed to toggle spell slot:', response.status, errorData);
         }
     } catch (err) {
         console.error('Error toggling spell slot:', err);
