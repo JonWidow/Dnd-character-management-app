@@ -545,8 +545,28 @@
 
         function moveDrag(clientX, clientY) {
             if (isDragging) {
-                statsPanel.style.left = (clientX - dragOffsetX) + 'px';
-                statsPanel.style.top = (clientY - dragOffsetY) + 'px';
+                let newX = clientX - dragOffsetX;
+                let newY = clientY - dragOffsetY;
+                const panelWidth = 320;
+                const panelHeight = statsPanel.offsetHeight;
+                
+                // Keep panel within viewport
+                if (newX + panelWidth > window.innerWidth) {
+                    newX = window.innerWidth - panelWidth - 10;
+                }
+                if (newX < 10) {
+                    newX = 10;
+                }
+                
+                if (newY + panelHeight > window.innerHeight) {
+                    newY = window.innerHeight - panelHeight - 10;
+                }
+                if (newY < 10) {
+                    newY = 10;
+                }
+                
+                statsPanel.style.left = newX + 'px';
+                statsPanel.style.top = newY + 'px';
             }
         }
 

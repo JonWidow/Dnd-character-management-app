@@ -157,9 +157,30 @@ async function showCharacterStats(characterId, x, y) {
             spellSlotsContainer.innerHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; color: #999; font-size: 12px;">No spell slots</div>';
         }
         
-        // Position panel to the right of the context menu
-        statsPanel.style.left = x + 'px';
-        statsPanel.style.top = y + 'px';
+        // Position panel to the right of the context menu with viewport bounds checking
+        const panelWidth = 320;
+        const panelHeight = Math.min(window.innerHeight * 0.85, 500); // Approximate max height
+        let finalX = x;
+        let finalY = y;
+        
+        // Keep panel within viewport horizontally
+        if (finalX + panelWidth > window.innerWidth) {
+            finalX = window.innerWidth - panelWidth - 10; // 10px margin from edge
+        }
+        if (finalX < 10) {
+            finalX = 10;
+        }
+        
+        // Keep panel within viewport vertically
+        if (finalY + panelHeight > window.innerHeight) {
+            finalY = window.innerHeight - panelHeight - 10; // 10px margin from edge
+        }
+        if (finalY < 10) {
+            finalY = 10;
+        }
+        
+        statsPanel.style.left = finalX + 'px';
+        statsPanel.style.top = finalY + 'px';
         statsPanel.style.display = 'block';
     } catch (err) {
         console.error('Failed to fetch character stats:', err);
