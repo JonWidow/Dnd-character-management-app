@@ -122,8 +122,10 @@ async function showCharacterStats(characterId, x, y) {
         // Display character name
         document.getElementById('characterName').textContent = character.name;
         
-        // Display HP
-        document.getElementById('characterHP').textContent = `${character.current_hp}/${character.hit_points}`;
+        // Display HP - store character ID for update button
+        document.getElementById('characterCurrentHP').value = character.current_hp;
+        document.getElementById('characterMaxHP').textContent = character.hit_points;
+        statsPanel.dataset.characterId = character.id;
         
         // Display spell slots with visual indicators
         const spellSlotsContainer = document.getElementById('spellSlotsContainer');
@@ -208,6 +210,38 @@ async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
     } catch (err) {
         console.error('Error toggling spell slot:', err);
     }
+}
+
+async function updateCharacterHP() {
+    try {
+        const statsPanel = document.getElementById('statsPanel');
+        const characterId = statsPanel.dataset.characterId;
+        const newHP = parseInt(document.getElementById('characterCurrentHP').value) || 0;
+        
+        const response = await fetch(`/grid/characters/${characterId}/hp`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ current_hp: newHP })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            console.error('Failed to update HP:', response.status, errorData);
+        }
+    } catch (err) {
+        console.error('Error updating HP:', err);
+    }
+}
+
+// Set up HP input change listener when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('characterCurrentHP').addEventListener('change', updateCharacterHP);
+    });
+} else {
+    document.getElementById('characterCurrentHP').addEventListener('change', updateCharacterHP);
 }
 
 // Hide context menu on click outside

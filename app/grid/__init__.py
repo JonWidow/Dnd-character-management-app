@@ -261,3 +261,27 @@ def toggle_spell_slot_grid(slot_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+@grid_bp.route("/characters/<int:char_id>/hp", methods=["POST"])
+def update_character_hp(char_id):
+    """Update character's current HP."""
+    from flask import request
+    
+    try:
+        character = Character.query.get_or_404(char_id)
+        data = request.get_json() or {}
+        new_hp = data.get('current_hp', character.current_hp)
+        
+        # Ensure HP doesn't go below 0 or above max
+        new_hp = max(0, min(new_hp, character.max_hp))
+        character.current_hp = new_hp
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'current_hp': character.current_hp,
+            'max_hp': character.max_hp
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
