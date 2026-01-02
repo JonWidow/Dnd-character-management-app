@@ -9,10 +9,17 @@ let longPressTimer = null;
 let touchStartX = 0;
 let touchStartY = 0;
 let isDragging = false;
+let socketRef = null;
+let gridCodeRef = null;
 
 export function initContextMenu(stageRef, layerRef) {
     contextMenuStage = stageRef;
     contextMenuLayer = layerRef;
+}
+
+export function initSocket(socket, gridCode) {
+    socketRef = socket;
+    gridCodeRef = gridCode;
 }
 
 function showContextMenu(x, y, token) {
@@ -24,6 +31,13 @@ function showContextMenu(x, y, token) {
 
     // Delete handler
     document.getElementById('deleteToken').onclick = () => {
+        // Emit to server
+        if (socketRef && gridCodeRef && token.id) {
+            socketRef.emit('remove_token', {
+                code: gridCodeRef,
+                token_id: parseInt(token.id.replace('token-', ''))
+            });
+        }
         // Destroy the label if it exists
         if (token.label) {
             token.label.destroy();
@@ -125,6 +139,21 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
     token.on("dragend", () => {
         isDragging = false;
         stageRef.container().style.cursor = "default";
+        
+        // Emit move event to server if token has server ID
+        if (socketRef && gridCodeRef && token.id) {
+            // Convert stage coordinates to grid cell coordinates
+            const CELL_SIZE = 50;
+            const gridX = Math.round(token.x() / CELL_SIZE);
+            const gridY = Math.round(token.y() / CELL_SIZE);
+            
+            socketRef.emit('move_token', {
+                code: gridCodeRef,
+                token_id: parseInt(token.id.replace('token-', '')),
+                x: gridX,
+                y: gridY
+            });
+        }
     });
 
     // Mouse events

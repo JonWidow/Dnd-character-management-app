@@ -8,5 +8,6 @@ from .character_struct import CharacterClassModel, SubclassModel, SubclassFeatur
 from .user import User  # noqa: F401
 from .character import Character  # noqa: F401
 from .spell import Spell  # noqa: F401
+from .encounter import Encounter, CombatParticipant  # noqa: F401
 from .skill import Skill
 from .spell_slots import ClassSpellSlots, CharacterSpellSlot  # noqa: F401

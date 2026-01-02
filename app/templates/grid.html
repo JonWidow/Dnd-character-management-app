@@ -266,8 +266,54 @@
         
         // Setup socket.io
         const socket = io();
-        socket.emit('join_grid', { code: GRID_CODE, user: 'player' });
-        socket.emit('request_state', { code: GRID_CODE });
+        console.log('[CLIENT] Socket created:', socket);
+        
+        socket.on('connect', () => {
+            console.log('[CLIENT] Socket connected!');
+            socket.emit('join_grid', { code: GRID_CODE, user: 'player' });
+            socket.emit('request_state', { code: GRID_CODE });
+        });
+        
+        // Listen for grid state and render existing tokens
+        socket.on('state', (data) => {
+            console.log('[CLIENT] Received state:', data);
+            if (data.tokens && data.tokens.length > 0) {
+                const CELL_SIZE = 50;
+                data.tokens.forEach(tok => {
+                    // Check if token already exists locally
+                    const existingToken = gridModule.tokenLayer.children.find(child => child.id === `token-${tok.id}`);
+                    if (existingToken) {
+                        return; // Skip if already rendered
+                    }
+                    
+                    const token = tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, tok.name, tok.color, tok.character_id);
+                    
+                    // Convert grid cell coordinates to stage pixel coordinates
+                    const stageX = tok.x * CELL_SIZE + CELL_SIZE / 2;
+                    const stageY = tok.y * CELL_SIZE + CELL_SIZE / 2;
+                    
+                    token.x(stageX);
+                    token.y(stageY);
+                    
+                    // Move label to match token position
+                    if (token.label) {
+                        token.label.x(stageX);
+                        token.label.y(stageY);
+                    }
+                    
+                    token.id = `token-${tok.id}`; // Store server ID on token
+                });
+                gridModule.tokenLayer.draw();
+            }
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('[CLIENT] Socket disconnected');
+        });
+        
+        socket.on('error', (err) => {
+            console.error('[CLIENT] Socket error:', err);
+        });
 
         // Character dropdown setup
         const tokenNameInput = document.getElementById('tokenName');
@@ -280,15 +326,18 @@
                 const response = await fetch('{{ url_for("grid.get_characters") }}');
                 const characters = await response.json();
                 
-                // Show dropdown on focus
-                tokenNameInput.addEventListener('focus', () => {
+                // Show dropdown on focus and click
+                const showCharacterDropdown = () => {
                     if (characters.length > 0) {
                         characterDropdown.innerHTML = characters.map(char => 
                             `<div class="character-option" data-id="${char.id}" data-name="${char.name}">${char.name}</div>`
                         ).join('');
                         characterDropdown.classList.add('show');
                     }
-                });
+                };
+
+                tokenNameInput.addEventListener('focus', showCharacterDropdown);
+                tokenNameInput.addEventListener('click', showCharacterDropdown);
 
                 // Filter and show matching characters as user types
                 tokenNameInput.addEventListener('input', (e) => {
@@ -341,7 +390,23 @@
             selectedCharacterId = null;
             document.getElementById('tokenName').value = '';
             
-            tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, name, color, characterId);
+            // Add token locally and emit to server
+            const token = tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, name, color, characterId);
+            
+            // Convert stage coordinates to grid cell coordinates
+            const CELL_SIZE = 50; // Match grid.js CELL_SIZE
+            const gridX = Math.round(token.x() / CELL_SIZE);
+            const gridY = Math.round(token.y() / CELL_SIZE);
+            
+            // Emit spawn_token event to server with grid coordinates
+            socket.emit('spawn_token', {
+                code: GRID_CODE,
+                name: name,
+                color: color,
+                character_id: characterId,
+                x: gridX,
+                y: gridY
+            });
         });
 
         // Enter key to add token
@@ -353,6 +418,7 @@
 
         // Pass context menu and layer to tokens module
         tokensModule.initContextMenu(gridModule.stage, gridModule.tokenLayer);
+        tokensModule.initSocket(socket, GRID_CODE);
 
         // Close context menu on tap/click outside
         const gridContainer = document.getElementById('grid-container');

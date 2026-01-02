@@ -24,7 +24,7 @@ def list_admins():
 
 def make_admin(username):
     with app.app_context():
-        user = User.query.filter_by(username=username).first()
+        user = User.get_by_username(username)
         if not user:
             print(f"✗ User '{username}' not found.")
             return False
@@ -40,7 +40,7 @@ def make_admin(username):
 
 def remove_admin(username):
     with app.app_context():
-        user = User.query.filter_by(username=username).first()
+        user = User.get_by_username(username)
         if not user:
             print(f"✗ User '{username}' not found.")
             return False

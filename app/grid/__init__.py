@@ -4,23 +4,53 @@ from app.extensions import socketio
 from flask_socketio import join_room, leave_room, emit
 from flask_login import current_user
 from app.models.character import Character
+from app.models.encounter import Encounter, CombatParticipant
+from app.models import db
 
 # All grid routes will live under /grid/...
 grid_bp = Blueprint("grid", __name__, url_prefix="/grid")
 
-# ---------- Simple in-memory state for MVP ----------
-# sessions: { code: {"w":20,"h":13,"cell_px":48,"tokens":{id:tok},"next_id":1} }
+# ---------- In-memory cache for active sessions ----------
 grids = {}
 
 def _room(code: str) -> str:
     return f"grid:{code}"
 
-def _get_grid(code: str):
-    g = grids.get(code)
-    if not g:
-        g = {"w": 20, "h": 13, "cell_px": 48, "tokens": {}, "next_id": 1}
-        grids[code] = g
-    return g
+def _get_or_create_encounter(code: str) -> Encounter:
+    """Get encounter from cache or load/create from DB"""
+    if code in grids:
+        return grids[code]["encounter"]
+    
+    # Try to load from database
+    encounter = Encounter.query.filter_by(session_code=code).first()
+    
+    if not encounter:
+        # Create new encounter
+        encounter = Encounter(session_code=code, name=f"Encounter {code}")
+        db.session.add(encounter)
+        db.session.commit()
+    
+    # Cache it with grid metadata
+    grids[code] = {
+        "encounter": encounter,
+        "w": 20,
+        "h": 13,
+        "cell_px": 48,
+        "tokens": {}
+    }
+    
+    # Load tokens from DB into cache
+    for participant in encounter.participants:
+        grids[code]["tokens"][participant.id] = {
+            "id": participant.id,
+            "name": participant.name,
+            "x": participant.x,
+            "y": participant.y,
+            "color": participant.color,
+            "character_id": participant.character_id
+        }
+    
+    return encounter
 
 # ---------- HTTP routes ----------
 @grid_bp.route("/<code>")
@@ -47,7 +77,9 @@ def on_join_grid(data):
     if not code:
         emit("error", {"msg": "missing code"})
         return
-    _get_grid(code)  # ensure exists
+    
+    # Load/create encounter
+    encounter = _get_or_create_encounter(code)
     join_room(_room(code))
     print(f"[socket] {user} joined {code}")
     emit("presence", {"user": user, "action": "join"}, to=_room(code))
@@ -62,12 +94,13 @@ def on_leave_grid(data):
 @socketio.on("request_state")
 def on_request_state(data):
     code = (data or {}).get("code")
-    g = _get_grid(code)
-    tokens = list(g["tokens"].values())
+    encounter = _get_or_create_encounter(code)
+    grid_data = grids[code]
+    tokens = list(grid_data["tokens"].values())
     print(f"[socket] state for {code}: {len(tokens)} tokens")
     emit("state", {
         "exists": True,
-        "grid": {"w": g["w"], "h": g["h"], "cell_px": g["cell_px"], "name": code},
+        "grid": {"w": grid_data["w"], "h": grid_data["h"], "cell_px": grid_data["cell_px"], "name": code},
         "tokens": tokens
     })
 
@@ -76,28 +109,44 @@ def on_spawn_token(data):
     code = (data or {}).get("code")
     if not code:
         return
-    g = _get_grid(code)
-    tid = g["next_id"]; g["next_id"] += 1
-    tok = {
-        "id": tid,
-        "name": (data or {}).get("name") or f"T{tid}",
-        "x": int((data or {}).get("x", 0)),
-        "y": int((data or {}).get("y", 0)),
-        "color": (data or {}).get("color") or "#444444",
-        "character_id": (data or {}).get("character_id")
+    
+    encounter = _get_or_create_encounter(code)
+    grid_data = grids[code]
+    
+    # Create database record
+    participant = CombatParticipant(
+        encounter_id=encounter.id,
+        character_id=(data or {}).get("character_id"),
+        name=(data or {}).get("name") or "Token",
+        x=int((data or {}).get("x", 0)),
+        y=int((data or {}).get("y", 0)),
+        color=(data or {}).get("color") or "#444444"
+    )
+    
+    # Clamp coordinates
+    participant.x = max(0, min(grid_data["w"] - 1, participant.x))
+    participant.y = max(0, min(grid_data["h"] - 1, participant.y))
+    
+    db.session.add(participant)
+    db.session.commit()
+    
+    # Add to cache
+    tok_dict = {
+        "id": participant.id,
+        "name": participant.name,
+        "x": participant.x,
+        "y": participant.y,
+        "color": participant.color,
+        "character_id": participant.character_id
     }
-    # clamp
-    tok["x"] = max(0, min(g["w"] - 1, tok["x"]))
-    tok["y"] = max(0, min(g["h"] - 1, tok["y"]))
-    g["tokens"][tid] = tok
-    print(f"[socket] spawn in {code}: id={tid} @ ({tok['x']},{tok['y']})")
+    grid_data["tokens"][participant.id] = tok_dict
+    print(f"[socket] spawn in {code}: id={participant.id} @ ({participant.x},{participant.y})")
 
-    emit("token_spawned", tok, to=_room(code))
-    # optional full state push
+    emit("token_spawned", tok_dict, to=_room(code))
     emit("state", {
         "exists": True,
-        "grid": {"w": g["w"], "h": g["h"], "cell_px": g["cell_px"], "name": code},
-        "tokens": list(g["tokens"].values())
+        "grid": {"w": grid_data["w"], "h": grid_data["h"], "cell_px": grid_data["cell_px"], "name": code},
+        "tokens": list(grid_data["tokens"].values())
     }, to=_room(code))
 
 @socketio.on("move_token")
@@ -106,21 +155,45 @@ def on_move_token(data):
     tid  = int((data or {}).get("token_id", 0))
     x    = int((data or {}).get("x", 0))
     y    = int((data or {}).get("y", 0))
-    g = _get_grid(code)
-    tok = g["tokens"].get(tid)
+    
+    encounter = _get_or_create_encounter(code)
+    grid_data = grids[code]
+    
+    # Update cache
+    tok = grid_data["tokens"].get(tid)
     if not tok:
         return
-    x = max(0, min(g["w"] - 1, x))
-    y = max(0, min(g["h"] - 1, y))
-    tok["x"], tok["y"] = x, y
+    
+    x = max(0, min(grid_data["w"] - 1, x))
+    y = max(0, min(grid_data["h"] - 1, y))
+    tok["x"] = x
+    tok["y"] = y
+    
+    # Update database
+    participant = CombatParticipant.query.get(tid)
+    if participant:
+        participant.x = x
+        participant.y = y
+        db.session.commit()
+    
     print(f"[socket] move in {code}: id={tid} -> ({x},{y})")
-    emit("token_moved", {"token_id": tid, "x": x, "y": y}, to=_room(code), include_self=True)
+    emit("token_moved", tok, to=_room(code))
 
 @socketio.on("remove_token")
 def on_remove_token(data):
     code = (data or {}).get("code")
     tid  = int((data or {}).get("token_id", 0))
-    g = _get_grid(code)
-    if tid in g["tokens"]:
-        del g["tokens"][tid]
-        emit("token_removed", {"token_id": tid}, to=_room(code))
+    
+    encounter = _get_or_create_encounter(code)
+    grid_data = grids[code]
+    
+    # Remove from cache
+    if tid in grid_data["tokens"]:
+        del grid_data["tokens"][tid]
+    
+    # Remove from database
+    CombatParticipant.query.filter_by(id=tid).delete()
+    db.session.commit()
+    
+    print(f"[socket] remove in {code}: id={tid}")
+    emit("token_removed", {"token_id": tid}, to=_room(code))

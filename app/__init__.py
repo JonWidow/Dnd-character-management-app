@@ -160,7 +160,7 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         
-        user = User.query.filter_by(username=username).first()
+        user = User.get_by_username(username)
         
         if user and user.check_password(password):
             from datetime import datetime

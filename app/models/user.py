@@ -29,3 +29,8 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Verify a password against the hash."""
         return check_password_hash(self.password_hash, password)
+
+    @classmethod
+    def get_by_username(cls, username):
+        """Get user by username (case-insensitive)."""
+        return cls.query.filter(cls.username.ilike(username)).first()
