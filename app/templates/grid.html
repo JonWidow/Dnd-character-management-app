@@ -280,8 +280,10 @@
             if (data.tokens && data.tokens.length > 0) {
                 const CELL_SIZE = 50;
                 data.tokens.forEach(tok => {
-                    // Check if token already exists locally by server ID
-                    const existingToken = gridModule.tokenLayer.children.find(child => child.serverId === tok.id);
+                    // Check if token already exists locally by server ID (only find Circle tokens, not labels)
+                    const existingToken = gridModule.tokenLayer.children.find(child => 
+                        child.serverId === tok.id && child.className === 'Circle'
+                    );
                     if (existingToken) {
                         // Update position if token exists
                         const stageX = tok.x * CELL_SIZE + CELL_SIZE / 2;
@@ -291,22 +293,20 @@
                         if (existingToken.label) {
                             tokensModule.syncLabelPosition(existingToken, existingToken.label);
                         }
-                        return; // Skip if already rendered
+                        return;
                     }
                     
+                    // Create new token from server data
                     const token = tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, tok.name, tok.color, tok.character_id);
-                    
-                    // Store server ID on token for future lookups
                     token.serverId = tok.id;
                     
-                    // Convert grid cell coordinates to stage pixel coordinates
+                    // Position token at server coordinates
                     const stageX = tok.x * CELL_SIZE + CELL_SIZE / 2;
                     const stageY = tok.y * CELL_SIZE + CELL_SIZE / 2;
-                    
                     token.x(stageX);
                     token.y(stageY);
                     
-                    // Move label to match token position
+                    // Position label
                     if (token.label) {
                         tokensModule.syncLabelPosition(token, token.label);
                     }
@@ -391,14 +391,7 @@
         // Handle server acknowledgment of token spawn
         socket.on('token_spawned', (data) => {
             console.log('[CLIENT] Token spawned on server:', data);
-            // Find the locally created token and set its server ID
-            const localToken = gridModule.tokenLayer.children.find(child => 
-                !child.serverId && child.name === data.name
-            );
-            if (localToken) {
-                localToken.serverId = data.token_id;
-                console.log(`[CLIENT] Set server ID ${data.token_id} on local token`);
-            }
+            // Just log it - the token will be created when state is received
         });
 
         // Add token button handler
@@ -411,15 +404,17 @@
             selectedCharacterId = null;
             document.getElementById('tokenName').value = '';
             
-            // Add token locally and emit to server
-            const token = tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, name, color, characterId);
+            // Calculate spawn position at center
+            const stageX = gridModule.stage.width() / 2;
+            const stageY = gridModule.stage.height() / 2;
             
             // Convert stage coordinates to grid cell coordinates
             const CELL_SIZE = 50; // Match grid.js CELL_SIZE
-            const gridX = Math.round(token.x() / CELL_SIZE);
-            const gridY = Math.round(token.y() / CELL_SIZE);
+            const gridX = Math.round((stageX - CELL_SIZE / 2) / CELL_SIZE);
+            const gridY = Math.round((stageY - CELL_SIZE / 2) / CELL_SIZE);
             
-            // Emit spawn_token event to server with grid coordinates
+            // Emit spawn_token event to server - DON'T create token locally
+            // The token will be created when we receive the state update
             socket.emit('spawn_token', {
                 code: GRID_CODE,
                 name: name,
@@ -446,7 +441,7 @@
             console.log('[CLIENT] Token moved:', data);
             const CELL_SIZE = 50;
             const token = gridModule.tokenLayer.children.find(child => 
-                child.serverId === data.token_id
+                child.serverId === data.token_id && child.className === 'Circle'
             );
             if (token) {
                 const stageX = data.x * CELL_SIZE + CELL_SIZE / 2;

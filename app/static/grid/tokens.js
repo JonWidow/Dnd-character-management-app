@@ -12,6 +12,23 @@ let isDragging = false;
 let socketRef = null;
 let gridCodeRef = null;
 
+// Helper function to bring a token and its label to the front
+// Ensures the label stays above its token
+function bringTokenToFront(token, label, layer) {
+    // Find the highest z-index currently in use
+    let maxZ = -1;
+    layer.children.forEach(child => {
+        const z = child.getZIndex();
+        if (z > maxZ) maxZ = z;
+    });
+    
+    // Bring this token and its label to the front
+    token.setZIndex(maxZ + 1);
+    if (label) {
+        label.setZIndex(maxZ + 2);  // Label always one level above its token
+    }
+}
+
 export function initContextMenu(stageRef, layerRef) {
     contextMenuStage = stageRef;
     contextMenuLayer = layerRef;
@@ -59,7 +76,7 @@ function showContextMenu(x, y, token) {
 
     // Bring to front
     document.getElementById('bringToFront').onclick = () => {
-        token.setZIndex(contextMenuLayer.children.length - 1);
+        bringTokenToFront(token, token.label, contextMenuLayer);
         contextMenuLayer.draw();
         menu.style.display = 'none';
     };
@@ -67,6 +84,9 @@ function showContextMenu(x, y, token) {
     // Send to back
     document.getElementById('sendToBack').onclick = () => {
         token.setZIndex(0);
+        if (token.label) {
+            token.label.setZIndex(1);  // Label just above token
+        }
         contextMenuLayer.draw();
         menu.style.display = 'none';
     };
@@ -112,17 +132,17 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
         pointerEvents: "none",
         listening: false
     });
-    
-    // Center the label on the token by offsetting to the text center
-    const textWidth = label.getWidth();
-    label.offsetX(textWidth / 2);
-    label.offsetY(label.getHeight() / 2);
 
     // Store label reference on token for easy deletion
     token.label = label;
 
     layerRef.add(token);
     layerRef.add(label);
+    
+    // Center the label on the token by offsetting to the text center
+    // Do this AFTER adding to layer so dimensions are properly calculated
+    label.offsetX(label.getWidth() / 2);
+    label.offsetY(label.getHeight() / 2);
 
     // Update label position when token moves
     token.on("dragmove", () => {
@@ -139,8 +159,7 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
         isDragging = true;
         // Hide context menu when starting to drag
         document.getElementById('contextMenu').style.display = 'none';
-        token.setZIndex(layerRef.children.length - 1);
-        label.setZIndex(layerRef.children.length - 1);
+        bringTokenToFront(token, label, layerRef);
         stageRef.container().style.cursor = "grabbing";
     });
 
@@ -187,8 +206,7 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
         if (longPressTimer) clearTimeout(longPressTimer);
         isDragging = false;
         
-        token.setZIndex(layerRef.children.length - 1);
-        label.setZIndex(layerRef.children.length - 1);
+        bringTokenToFront(token, label, layerRef);
         layerRef.draw();
         
         stageRef.container().style.cursor = "grabbing";
