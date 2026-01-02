@@ -33,8 +33,8 @@ def _get_or_create_encounter(code: str) -> Encounter:
     # Cache it with grid metadata
     grids[code] = {
         "encounter": encounter,
-        "w": 20,
-        "h": 13,
+        "w": 100,
+        "h": 100,
         "cell_px": 48,
         "tokens": {}
     }

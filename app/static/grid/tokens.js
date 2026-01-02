@@ -22,6 +22,16 @@ export function initSocket(socket, gridCode) {
     gridCodeRef = gridCode;
 }
 
+// Helper function to sync label position with token
+// Centers the label on the token without relying on offset properties
+export function syncLabelPosition(token, label) {
+    if (label) {
+        // Position label at token center, Konva will handle centering via align/verticalAlign
+        label.x(token.x());
+        label.y(token.y());
+    }
+}
+
 function showContextMenu(x, y, token) {
     const menu = document.getElementById('contextMenu');
     menu.style.left = x + 'px';
@@ -31,11 +41,11 @@ function showContextMenu(x, y, token) {
 
     // Delete handler
     document.getElementById('deleteToken').onclick = () => {
-        // Emit to server
-        if (socketRef && gridCodeRef && token.id) {
+        // Emit to server if token has been acknowledged
+        if (socketRef && gridCodeRef && token.serverId) {
             socketRef.emit('remove_token', {
                 code: gridCodeRef,
-                token_id: parseInt(token.id.replace('token-', ''))
+                token_id: token.serverId
             });
         }
         // Destroy the label if it exists
@@ -99,12 +109,14 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
         fontStyle: "bold",
         align: "center",
         verticalAlign: "middle",
-        width: tokenRadius * 2,
         pointerEvents: "none",
-        listening: false,
-        offsetX: tokenRadius,
-        offsetY: 7
+        listening: false
     });
+    
+    // Center the label on the token by offsetting to the text center
+    const textWidth = label.getWidth();
+    label.offsetX(textWidth / 2);
+    label.offsetY(label.getHeight() / 2);
 
     // Store label reference on token for easy deletion
     token.label = label;
@@ -114,10 +126,7 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
 
     // Update label position when token moves
     token.on("dragmove", () => {
-        label.position({ 
-            x: token.x(),
-            y: token.y()
-        });
+        syncLabelPosition(token, label);
         layerRef.batchDraw();
     });
 
@@ -140,20 +149,37 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
         isDragging = false;
         stageRef.container().style.cursor = "default";
         
+        // Snap token to nearest grid cell center
+        const CELL_SIZE = 50;
+        
+        // Convert stage coordinates to grid cell indices (accounting for cell center offset)
+        const gridX = Math.round((token.x() - CELL_SIZE / 2) / CELL_SIZE);
+        const gridY = Math.round((token.y() - CELL_SIZE / 2) / CELL_SIZE);
+        
+        // Convert back to stage coordinates (snap to cell center)
+        const snappedX = gridX * CELL_SIZE + CELL_SIZE / 2;
+        const snappedY = gridY * CELL_SIZE + CELL_SIZE / 2;
+        
+        // Update token position
+        token.x(snappedX);
+        token.y(snappedY);
+        
+        // Sync label using the same method as dragmove
+        syncLabelPosition(token, label);
+        
+        layerRef.draw();
+        
         // Emit move event to server if token has server ID
-        if (socketRef && gridCodeRef && token.id) {
-            // Convert stage coordinates to grid cell coordinates
-            const CELL_SIZE = 50;
-            const gridX = Math.round(token.x() / CELL_SIZE);
-            const gridY = Math.round(token.y() / CELL_SIZE);
-            
+        if (socketRef && gridCodeRef && token.serverId) {
             socketRef.emit('move_token', {
                 code: gridCodeRef,
-                token_id: parseInt(token.id.replace('token-', '')),
+                token_id: token.serverId,
                 x: gridX,
                 y: gridY
             });
         }
+        // If no serverId yet (token not acknowledged by server), that's ok
+        // The local position is still updated
     });
 
     // Mouse events

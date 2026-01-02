@@ -289,8 +289,7 @@
                         existingToken.x(stageX);
                         existingToken.y(stageY);
                         if (existingToken.label) {
-                            existingToken.label.x(stageX);
-                            existingToken.label.y(stageY);
+                            tokensModule.syncLabelPosition(existingToken, existingToken.label);
                         }
                         return; // Skip if already rendered
                     }
@@ -309,8 +308,7 @@
                     
                     // Move label to match token position
                     if (token.label) {
-                        token.label.x(stageX);
-                        token.label.y(stageY);
+                        tokensModule.syncLabelPosition(token, token.label);
                     }
                 });
                 gridModule.tokenLayer.draw();
@@ -456,8 +454,7 @@
                 token.x(stageX);
                 token.y(stageY);
                 if (token.label) {
-                    token.label.x(stageX);
-                    token.label.y(stageY);
+                    tokensModule.syncLabelPosition(token, token.label);
                 }
                 gridModule.tokenLayer.draw();
             }
