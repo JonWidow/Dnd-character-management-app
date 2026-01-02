@@ -246,8 +246,8 @@
     </div>
 
     <!-- Character Stats Panel -->
-    <div id="statsPanel" style="display: none; position: fixed; background: white; border: 2px solid #333; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); padding: 12px; width: 320px; max-height: 85vh; z-index: 1000; font-size: 13px; overflow-y: auto; overflow-x: hidden;">
-        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px; position: sticky; top: 0; background: white; z-index: 1;" id="characterName"></div>
+    <div id="statsPanel" style="display: none; position: fixed; background: white; border: 2px solid #333; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); padding: 12px; width: 320px; max-height: 85vh; z-index: 1000; font-size: 13px; overflow-y: auto; overflow-x: hidden; touch-action: none;">
+        <div style="font-weight: bold; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px; background: white; z-index: 1; user-select: none;" id="characterName"></div>
         <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
             <span style="min-width: 20px; font-weight: 500;">HP:</span>
             <input type="number" id="characterCurrentHP" style="width: 45px; padding: 4px; border: 1px solid #999; border-radius: 3px; font-size: 12px;" min="0">
@@ -514,7 +514,7 @@
             }
         });
 
-        // Make stats panel draggable
+        // Make stats panel draggable (mouse and touch)
         const statsPanel = document.getElementById('statsPanel');
         const characterNameHeader = document.getElementById('characterName');
         let isDragging = false;
@@ -523,24 +523,54 @@
 
         characterNameHeader.style.cursor = 'grab';
 
-        characterNameHeader.addEventListener('mousedown', (e) => {
+        function startDrag(clientX, clientY) {
             isDragging = true;
-            dragOffsetX = e.clientX - statsPanel.offsetLeft;
-            dragOffsetY = e.clientY - statsPanel.offsetTop;
+            const rect = statsPanel.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
             characterNameHeader.style.cursor = 'grabbing';
+        }
+
+        function moveDrag(clientX, clientY) {
+            if (isDragging) {
+                statsPanel.style.left = (clientX - dragOffsetX) + 'px';
+                statsPanel.style.top = (clientY - dragOffsetY) + 'px';
+            }
+        }
+
+        function endDrag() {
+            isDragging = false;
+            characterNameHeader.style.cursor = 'grab';
+        }
+
+        // Mouse events
+        characterNameHeader.addEventListener('mousedown', (e) => {
+            startDrag(e.clientX, e.clientY);
             e.preventDefault();
         });
 
         document.addEventListener('mousemove', (e) => {
-            if (isDragging) {
-                statsPanel.style.left = (e.clientX - dragOffsetX) + 'px';
-                statsPanel.style.top = (e.clientY - dragOffsetY) + 'px';
+            moveDrag(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mouseup', endDrag);
+
+        // Touch events for mobile
+        characterNameHeader.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
             }
         });
 
-        document.addEventListener('mouseup', () => {
-            isDragging = false;
-            characterNameHeader.style.cursor = 'grab';
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length > 0) {
+                moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        document.addEventListener('touchend', (e) => {
+            endDrag();
         });
     </script>
 </body>
