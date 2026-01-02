@@ -120,26 +120,33 @@
 
         <!-- Spell Slots -->
         <div class="mb-6">
-          <h2 class="font-semibold text-gray-700 mb-2">Spell Slots</h2>
-          {% if character.spell_slots and character.spell_slots|length > 0 %}
-            <table class="w-full border rounded text-left">
-              <thead>
-                <tr class="bg-gray-100">
-                    <th class="px-2 py-1 border">Level</th>
-                    <th class="px-2 py-1 border">Total Slots</th>
-                    <th class="px-2 py-1 border">Remaining Slots</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for slot in character.spell_slots|sort(attribute='level') %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-2 py-1 border">{{ slot.level }}</td>
-                        <td class="px-2 py-1 border">{{ slot.total_slots }}</td>
-                        <td class="px-2 py-1 border">{{ slot.remaining_slots }}</td>
-                    </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="font-semibold text-gray-700">Spell Slots</h2>
+            {% if character.spell_slots and character.spell_slots|length > 0 %}
+              <form method="POST" action="{{ url_for('reset_spell_slots', char_id=character.id) }}" style="display:inline;">
+                <button type="submit" class="px-2 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">
+                  Long Rest (Reset)
+                </button>
+              </form>
+            {% endif %}
+          </div>
+          
+          {% set active_slots = character.spell_slots | selectattr('total_slots', '>', 0) | list %}
+          
+          {% if active_slots %}
+            <div class="space-y-4">
+              {% for slot in active_slots | sort(attribute='level') %}
+                <div class="border rounded p-3 bg-gray-50">
+                  <p class="font-medium text-gray-700 mb-2">Level {{ slot.level }} Spell Slots ({{ slot.remaining_slots }}/{{ slot.total_slots }})</p>
+                  <div class="flex flex-wrap gap-2" data-slot-id="{{ slot.id }}" data-level="{{ slot.level }}" data-char-id="{{ character.id }}">
+                    {% for i in range(1, slot.total_slots + 1) %}
+                      <button type="button" class="spell-slot-box w-8 h-8 border-2 rounded cursor-pointer transition-all {% if i <= slot.remaining_slots %}border-blue-500 bg-blue-100 hover:bg-blue-200{% else %}border-red-500 bg-red-100 hover:bg-red-200{% endif %}" data-slot-id="{{ slot.id }}" data-slot-number="{{ i }}">
+                      </button>
+                    {% endfor %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
           {% else %}
             <p class="text-sm text-gray-500 italic">This character has no spell slots yet.</p>
           {% endif %}
@@ -333,6 +340,58 @@
             closeDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
             cancelDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
             deleteModal?.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.classList.add('hidden'); });
+
+            // Spell slot toggling
+            const spellSlotBoxes = document.querySelectorAll('.spell-slot-box');
+            spellSlotBoxes.forEach(box => {
+                box.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const slotId = box.dataset.slotId;
+                    const slotNumber = parseInt(box.dataset.slotNumber);
+                    const charId = {{ character.id }};
+                    
+                    try {
+                        const response = await fetch(`/characters/${charId}/toggle_spell_slot/${slotId}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ slot_number: slotNumber })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            // Refresh the slot display by recalculating all boxes in this slot
+                            const slotContainer = box.parentElement;
+                            const allBoxesInSlot = slotContainer.querySelectorAll('.spell-slot-box');
+                            
+                            const usedSlots = data.total - data.remaining;
+                            allBoxesInSlot.forEach((b, index) => {
+                                const boxNumber = index + 1;
+                                // Mark as used (red) if it's within the used count (from first)
+                                if (boxNumber <= usedSlots) {
+                                    // Used slot
+                                    b.classList.remove('border-blue-500', 'bg-blue-100', 'hover:bg-blue-200');
+                                    b.classList.add('border-red-500', 'bg-red-100', 'hover:bg-red-200');
+                                } else {
+                                    // Available slot
+                                    b.classList.remove('border-red-500', 'bg-red-100', 'hover:bg-red-200');
+                                    b.classList.add('border-blue-500', 'bg-blue-100', 'hover:bg-blue-200');
+                                }
+                            });
+                            
+                            // Update the remaining slots count in the label
+                            const label = slotContainer.previousElementSibling;
+                            const level = slotContainer.dataset.level;
+                            if (label) {
+                                label.textContent = `Level ${level} Spell Slots (${data.remaining}/${data.total})`;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error toggling spell slot:', error);
+                    }
+                });
+            });
         </script>
     {% endif %}
 </div>

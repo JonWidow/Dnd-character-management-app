@@ -309,6 +309,55 @@ def character_details(char_id):
                            prepared_spells=char.prepared_spells,
                            feats=feats)
 
+
+@app.route('/characters/<int:char_id>/reset_spell_slots', methods=['POST'])
+def reset_spell_slots(char_id):
+    char = Character.query.get_or_404(char_id)
+    
+    # Reset all spell slots for this character
+    for slot in char.spell_slots:
+        slot.reset_slots()
+    
+    db.session.commit()
+    flash(f"{char.name}'s spell slots have been reset (long rest).", 'success')
+    return redirect(url_for('character_details', char_id=char.id))
+
+
+@app.route('/characters/<int:char_id>/toggle_spell_slot/<int:slot_id>', methods=['POST'])
+def toggle_spell_slot(char_id, slot_id):
+    from app.models.spell_slots import CharacterSpellSlot
+    
+    char = Character.query.get_or_404(char_id)
+    slot = CharacterSpellSlot.query.get_or_404(slot_id)
+    
+    # Verify the slot belongs to this character
+    if slot.character_id != char.id:
+        abort(403)
+    
+    # Get the slot number from request (1-indexed, visual position)
+    data = request.get_json() or {}
+    slot_number = data.get('slot_number', 1)
+    
+    # Calculate how many slots are used (red)
+    used_slots = slot.total_slots - slot.remaining_slots
+    
+    # If slot_number <= used_slots, it's a RED (used) slot, so recover it
+    # If slot_number > used_slots, it's a BLUE (available) slot, so use it
+    if slot_number <= used_slots:
+        # This is a red/used slot, recover the last one
+        slot.recover_slot(1)
+    else:
+        # This is a blue/available slot, use the first available one
+        slot.use_slot(1)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'remaining': slot.remaining_slots,
+        'total': slot.total_slots
+    })
+
 @app.route('/api/classes/<int:class_id>/subclasses')
 def api_class_subclasses(class_id: int):
     """Get all subclasses for a given class."""
