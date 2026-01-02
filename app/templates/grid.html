@@ -498,6 +498,11 @@
             if (contextMenu.style.display === 'block') {
                 hasNewTouchAfterMenu = true;
             }
+            // Close stats panel on grid touch
+            const statsPanel = document.getElementById('statsPanel');
+            if (statsPanel.style.display === 'block' && !statsPanel.contains(e.target)) {
+                statsPanel.style.display = 'none';
+            }
         });
 
         gridContainer.addEventListener('touchend', (e) => {
@@ -509,8 +514,15 @@
         });
 
         document.addEventListener('click', (e) => {
+            const contextMenu = document.getElementById('contextMenu');
+            const statsPanel = document.getElementById('statsPanel');
+            
             if (e.target.id !== 'contextMenu' && !e.target.closest('#contextMenu')) {
                 contextMenu.style.display = 'none';
+            }
+            
+            if (e.target.id !== 'statsPanel' && !e.target.closest('#statsPanel')) {
+                statsPanel.style.display = 'none';
             }
         });
 
