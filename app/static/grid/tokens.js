@@ -12,6 +12,10 @@ let isDragging = false;
 let socketRef = null;
 let gridCodeRef = null;
 
+// Map to store token-to-characterId associations
+// Use token.id() as key since Konva custom properties don't work reliably
+const tokenCharacterMap = new Map();
+
 // Helper function to bring a token and its label to the front
 // Ensures the label stays above its token
 function bringTokenToFront(token, label, layer) {
@@ -49,15 +53,44 @@ export function syncLabelPosition(token, label) {
     }
 }
 
+export function getTokenCharacterId(token) {
+    return tokenCharacterMap.get(token.id());
+}
+
+
 function showContextMenu(x, y, token) {
     const menu = document.getElementById('contextMenu');
     menu.style.left = x + 'px';
     menu.style.top = y + 'px';
     menu.style.display = 'block';
+    
+    // Show stats panel if character is associated
+    const characterId = tokenCharacterMap.get(token.id());
+    if (characterId) {
+        showCharacterStats(characterId, x + 180, y);
+    } else {
+        document.getElementById('statsPanel').style.display = 'none';
+    }
     selectedToken = token;
+
+    // View character handler
+    document.getElementById('viewCharacter').onclick = () => {
+        const characterId = tokenCharacterMap.get(token.id());
+        if (characterId) {
+            // Open character details in new tab
+            const characterUrl = `/characters/${characterId}`;
+            window.open(characterUrl, '_blank');
+        } else {
+            alert('This token is not associated with a character');
+        }
+        menu.style.display = 'none';
+    };
 
     // Delete handler
     document.getElementById('deleteToken').onclick = () => {
+        // Clean up the character map
+        tokenCharacterMap.delete(token.id());
+        
         // Emit to server if token has been acknowledged
         if (socketRef && gridCodeRef && token.serverId) {
             socketRef.emit('remove_token', {
@@ -73,29 +106,100 @@ function showContextMenu(x, y, token) {
         contextMenuLayer.draw();
         menu.style.display = 'none';
     };
-
-    // Bring to front
-    document.getElementById('bringToFront').onclick = () => {
-        bringTokenToFront(token, token.label, contextMenuLayer);
-        contextMenuLayer.draw();
-        menu.style.display = 'none';
-    };
-
-    // Send to back
-    document.getElementById('sendToBack').onclick = () => {
-        token.setZIndex(0);
-        if (token.label) {
-            token.label.setZIndex(1);  // Label just above token
+}
+// Fetch and display character stats
+async function showCharacterStats(characterId, x, y) {
+    try {
+        const response = await fetch(`/grid/api/characters/${characterId}`);
+        if (!response.ok) {
+            console.error('Failed to fetch character stats:', response.status);
+            return;
         }
-        contextMenuLayer.draw();
-        menu.style.display = 'none';
-    };
+        
+        const character = await response.json();
+        const statsPanel = document.getElementById('statsPanel');
+        
+        // Display character name
+        document.getElementById('characterName').textContent = character.name;
+        
+        // Display HP
+        document.getElementById('characterHP').textContent = `${character.current_hp}/${character.hit_points}`;
+        
+        // Display spell slots with visual indicators
+        const spellSlotsContainer = document.getElementById('spellSlotsContainer');
+        if (character.spell_slots && character.spell_slots.length > 0) {
+            let slotsHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px;">';
+            character.spell_slots.forEach(slot => {
+                // Create visual slot boxes like character details
+                let slotBoxes = '';
+                for (let i = 1; i <= slot.total_slots; i++) {
+                    const isUsed = i <= slot.used ? true : false;
+                    const bgColor = isUsed ? '#ef4444' : '#3b82f6';  // red if used, blue if available
+                    const borderColor = isUsed ? '#dc2626' : '#1d4ed8';
+                    slotBoxes += `<button type="button" 
+                        style="width: 20px; height: 20px; margin: 2px; background-color: ${bgColor}; border: 2px solid ${borderColor}; border-radius: 3px; font-size: 10px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0; font-weight: bold; transition: all 0.2s;"
+                        data-slot-id="${slot.id}"
+                        data-slot-index="${i}"
+                        data-character-id="${characterId}"
+                        class="spell-slot-btn"
+                        onclick="toggleSpellSlot(event, ${characterId}, ${slot.id}, ${i})">${i}</button>`;
+                }
+                slotsHTML += `<div style="margin-top: 4px; font-size: 12px;">
+                    <span style="font-weight: bold;">Lvl ${slot.level}</span>
+                    <div style="margin-top: 2px;">${slotBoxes}</div>
+                </div>`;
+            });
+            slotsHTML += '</div>';
+            spellSlotsContainer.innerHTML = slotsHTML;
+        } else {
+            spellSlotsContainer.innerHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; color: #999; font-size: 12px;">No spell slots</div>';
+        }
+        
+        // Position panel to the right of the context menu
+        statsPanel.style.left = x + 'px';
+        statsPanel.style.top = y + 'px';
+        statsPanel.style.display = 'block';
+    } catch (err) {
+        console.error('Failed to fetch character stats:', err);
+    }
+}
+
+async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
+    event.stopPropagation();
+    try {
+        // Determine if we're using or restoring the slot based on which slot was clicked
+        // If clicking on used slots (red), restore it; if clicking on available slots (blue), use it
+        const btn = event.target;
+        const isUsed = btn.style.backgroundColor === 'rgb(239, 68, 68)' || btn.style.backgroundColor === '#ef4444';
+        
+        const response = await fetch(`/api/characters/${characterId}/spell-slots/${slotId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ use_slot: !isUsed })
+        });
+        
+        if (response.ok) {
+            // Refresh the stats panel to show updated spell slot state
+            const statsPanel = document.getElementById('statsPanel');
+            const panelLeft = parseInt(statsPanel.style.left);
+            const panelTop = parseInt(statsPanel.style.top);
+            await showCharacterStats(characterId, panelLeft, panelTop);
+        } else {
+            console.error('Failed to toggle spell slot');
+        }
+    } catch (err) {
+        console.error('Error toggling spell slot:', err);
+    }
 }
 
 // Hide context menu on click outside
 document.addEventListener('click', (e) => {
-    if (e.target.id !== 'contextMenu' && !e.target.closest('#contextMenu')) {
+    if (e.target.id !== 'contextMenu' && !e.target.closest('#contextMenu') && 
+        e.target.id !== 'statsPanel' && !e.target.closest('#statsPanel')) {
         document.getElementById('contextMenu').style.display = 'none';
+        document.getElementById('statsPanel').style.display = 'none';
     }
 });
 
@@ -116,9 +220,13 @@ export function addToken(stageRef, layerRef, name = "Token", color = "#ff0000", 
         strokeWidth: 2,
         hitStrokeWidth: 2,
         draggable: true,
-        name: name,
-        characterId: characterId
+        name: name
     });
+    
+    // Store characterId in the map using token's Konva id
+    if (characterId) {
+        tokenCharacterMap.set(`token-${tokenId}`, characterId);
+    }
 
     const label = new Konva.Text({
         x: x,

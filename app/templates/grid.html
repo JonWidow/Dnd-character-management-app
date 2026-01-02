@@ -241,9 +241,18 @@
 
     <!-- Context Menu -->
     <div id="contextMenu">
+        <div class="context-item" id="viewCharacter">👁️ View Character</div>
         <div class="context-item" id="deleteToken">🗑️ Delete</div>
-        <div class="context-item" id="bringToFront">⬆️ Bring to Front</div>
-        <div class="context-item" id="sendToBack">⬇️ Send to Back</div>
+    </div>
+
+    <!-- Character Stats Panel -->
+    <div id="statsPanel" style="display: none; position: fixed; background: white; border: 2px solid #333; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); padding: 12px; min-width: 220px; z-index: 1000; font-size: 13px;">
+        <div style="font-weight: bold; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 6px;" id="characterName"></div>
+        <div style="margin-bottom: 8px;">
+            <span style="display: inline-block; width: 50px;">HP:</span>
+            <span id="characterHP" style="color: #d32f2f; font-weight: bold;"></span>
+        </div>
+        <div id="spellSlotsContainer" style="margin-top: 8px;"></div>
     </div>
 
     <!-- Konva.js library -->
@@ -327,17 +336,18 @@
         const tokenNameInput = document.getElementById('tokenName');
         const characterDropdown = document.getElementById('characterDropdown');
         let selectedCharacterId = null;
+        let allCharacters = [];
 
         // Fetch and display characters
         async function loadCharacters() {
             try {
                 const response = await fetch('{{ url_for("grid.get_characters") }}');
-                const characters = await response.json();
+                allCharacters = await response.json();
                 
                 // Show dropdown on focus and click
                 const showCharacterDropdown = () => {
-                    if (characters.length > 0) {
-                        characterDropdown.innerHTML = characters.map(char => 
+                    if (allCharacters.length > 0) {
+                        characterDropdown.innerHTML = allCharacters.map(char => 
                             `<div class="character-option" data-id="${char.id}" data-name="${char.name}">${char.name}</div>`
                         ).join('');
                         characterDropdown.classList.add('show');
@@ -350,7 +360,7 @@
                 // Filter and show matching characters as user types
                 tokenNameInput.addEventListener('input', (e) => {
                     const query = e.target.value.toLowerCase();
-                    const filtered = characters.filter(char => 
+                    const filtered = allCharacters.filter(char => 
                         char.name.toLowerCase().includes(query)
                     );
                     
@@ -369,7 +379,7 @@
                 // Handle character selection
                 characterDropdown.addEventListener('click', (e) => {
                     if (e.target.classList.contains('character-option')) {
-                        selectedCharacterId = e.target.dataset.id;
+                        selectedCharacterId = parseInt(e.target.dataset.id);
                         tokenNameInput.value = e.target.dataset.name;
                         characterDropdown.classList.remove('show');
                     }
@@ -398,7 +408,17 @@
         document.getElementById('addTokenBtn').addEventListener('click', () => {
             const name = document.getElementById('tokenName').value || 'Token';
             const color = document.getElementById('tokenColor').value;
-            const characterId = selectedCharacterId;
+            
+            // Try to auto-match character if name wasn't explicitly selected
+            let characterId = selectedCharacterId;
+            if (!characterId && allCharacters.length > 0) {
+                const matched = allCharacters.find(char => 
+                    char.name.toLowerCase() === name.toLowerCase()
+                );
+                if (matched) {
+                    characterId = matched.id;
+                }
+            }
             
             // Reset for next token
             selectedCharacterId = null;

@@ -57,6 +57,40 @@ def _get_or_create_encounter(code: str) -> Encounter:
 def grid_view(code):
     return render_template("grid.html", code=code)
 
+@grid_bp.route("/api/characters/<int:char_id>")
+def get_character_stats(char_id):
+    """Fetch character stats for grid display"""
+    if not current_user.is_authenticated:
+        return jsonify({"error": "Not authenticated"}), 401
+    
+    character = Character.query.get(char_id)
+    if not character or character.user_id != current_user.id:
+        return jsonify({"error": "Not found"}), 404
+    
+    # Get spell slots from character's spell_slots relationship
+    spell_slots = []
+    try:
+        if character.spell_slots:
+            for slot in sorted(character.spell_slots, key=lambda s: s.level):
+                spell_slots.append({
+                    "id": slot.id,
+                    "level": slot.level,
+                    "total_slots": slot.total_slots,
+                    "remaining_slots": slot.remaining_slots,
+                    "used": slot.total_slots - slot.remaining_slots
+                })
+    except Exception as e:
+        print(f"Error fetching spell slots: {e}")
+        # Continue without spell slots rather than failing
+    
+    return jsonify({
+        "id": character.id,
+        "name": character.name,
+        "hit_points": character.max_hp,
+        "current_hp": character.current_hp,
+        "spell_slots": spell_slots
+    })
+
 @grid_bp.route("/api/characters")
 def get_characters():
     """Fetch current user's characters for token spawning"""
