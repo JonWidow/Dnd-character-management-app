@@ -249,13 +249,43 @@ def add_character():
             int(request.form['cha_sc'])
         ]
 
+        # Look up the class by name
+        class_name = request.form['char_class'].strip()
+        char_class_model = CharacterClassModel.query.filter(
+            db.func.lower(CharacterClassModel.name) == db.func.lower(class_name)
+        ).first()
+
+        # Create character
         new_char = Character(
             name=request.form['name'].strip(),
-            char_class=request.form['char_class'].strip(),
+            char_class=class_name,
             race=request.form['race'].strip(),
             ability_scores=ability_scores,
             level=level
         )
+        
+        # Link to the class model if found
+        if char_class_model:
+            new_char.char_class_id = char_class_model.id
+        
+        # Handle subclass if provided
+        subclass_id = request.form.get('subclass_id', type=int)
+        if subclass_id:
+            new_char.subclass_id = subclass_id
+        
+        # Assign to current user
+        if current_user.is_authenticated:
+            new_char.user_id = current_user.id
+        
+        # Calculate initial HP using the class model directly
+        if char_class_model:
+            con_mod = new_char.sc_to_mod(new_char.con_sc)
+            # Base HP is first level full hit die
+            hit_die_val = int(char_class_model.hit_die.replace('d', '')) if 'd' in str(char_class_model.hit_die) else char_class_model.hit_die
+            new_char.max_hp = hit_die_val + con_mod
+            new_char.current_hp = new_char.max_hp
+            new_char.sync_spell_slots()
+        
         db.session.add(new_char)
         db.session.commit()
         return redirect(url_for('character_details', char_id=new_char.id))

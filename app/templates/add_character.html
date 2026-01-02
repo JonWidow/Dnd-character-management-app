@@ -38,8 +38,8 @@
         </div>
 
         <div id="subclass_wrapper" style="display: none;">
-            <label for="subclass" class="block font-medium">Subclass:</label>
-            <select id="subclass" name="subclass" class="w-full border rounded p-2">
+            <label for="subclass_id" class="block font-medium">Subclass:</label>
+            <select id="subclass_id" name="subclass_id" class="w-full border rounded p-2">
                 <option value="">-- Select a Subclass --</option>
             </select>
             <p id="subclass_note" class="text-sm text-gray-600 mt-1"></p>
@@ -84,7 +84,7 @@ async function updateSubclassDropdown() {
     const classSelect = document.getElementById('char_class');
     const levelInput = document.getElementById('level');
     const subclassWrapper = document.getElementById('subclass_wrapper');
-    const subclassSelect = document.getElementById('subclass');
+    const subclassSelect = document.getElementById('subclass_id');
     const subclassNote = document.getElementById('subclass_note');
     
     const selectedOption = classSelect.options[classSelect.selectedIndex];
@@ -107,11 +107,11 @@ async function updateSubclassDropdown() {
             subclassWrapper.style.display = 'block';
             subclassNote.textContent = `Select a subclass (unlocked at level ${unlockLevel})`;
             
-            // Populate subclass options
+            // Populate subclass options with IDs
             subclassSelect.innerHTML = '<option value="">-- Select a Subclass --</option>';
             data.subclasses.forEach(sub => {
                 const option = document.createElement('option');
-                option.value = sub.name;
+                option.value = sub.id;  // Store the ID
                 option.textContent = sub.name;
                 subclassSelect.appendChild(option);
             });
