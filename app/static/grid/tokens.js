@@ -60,14 +60,49 @@ export function getTokenCharacterId(token) {
 
 function showContextMenu(x, y, token) {
     const menu = document.getElementById('contextMenu');
-    menu.style.left = x + 'px';
-    menu.style.top = y + 'px';
+    
+    // Keep context menu within viewport
+    const menuWidth = 150; // Approximate menu width
+    const menuHeight = 100; // Approximate menu height
+    let menuX = x;
+    let menuY = y;
+    
+    if (menuX + menuWidth > window.innerWidth) {
+        menuX = window.innerWidth - menuWidth - 10;
+    }
+    if (menuX < 10) {
+        menuX = 10;
+    }
+    
+    if (menuY + menuHeight > window.innerHeight) {
+        menuY = window.innerHeight - menuHeight - 10;
+    }
+    if (menuY < 10) {
+        menuY = 10;
+    }
+    
+    menu.style.left = menuX + 'px';
+    menu.style.top = menuY + 'px';
     menu.style.display = 'block';
     
     // Show stats panel if character is associated
+    // Position it to the right of menu, or left if no room
     const characterId = tokenCharacterMap.get(token.id());
     if (characterId) {
-        showCharacterStats(characterId, x + 180, y);
+        const panelWidth = 320;
+        let panelX = menuX + 170; // Try placing to the right of menu
+        
+        // If stats panel won't fit on the right, place it on the left
+        if (panelX + panelWidth > window.innerWidth) {
+            panelX = menuX - panelWidth - 10;
+        }
+        
+        // Ensure it stays in bounds
+        if (panelX < 10) {
+            panelX = 10;
+        }
+        
+        showCharacterStats(characterId, panelX, menuY);
     } else {
         document.getElementById('statsPanel').style.display = 'none';
     }
