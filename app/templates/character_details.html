@@ -75,6 +75,35 @@
             </tr>
         </table>
 
+        <!-- Character Notes and Favorite Buttons -->
+        <div class="mb-6 flex items-center space-x-3">
+            <button id="notesBtn" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                📝 Character Notes
+            </button>
+            <button id="favoriteBtn" class="px-4 py-2 rounded text-white {% if character.is_favorite %}bg-yellow-500 hover:bg-yellow-600{% else %}bg-gray-400 hover:bg-gray-500{% endif %}">
+                ⭐ {% if character.is_favorite %}Favorited{% else %}Add to Favorites{% endif %}
+            </button>
+        </div>
+
+        <!-- Notes Modal -->
+        <div id="notesModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
+            <div class="rounded-lg shadow-lg w-full max-w-2xl p-6 mx-4" style="background-color: #fafbfc;">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-gray-800">Character Notes</h2>
+                    <button id="closeNotesModal" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+                </div>
+
+                <form id="notesForm" method="POST" action="{{ url_for('edit_character', char_id=character.id) }}" class="space-y-4">
+                    <textarea name="notes" rows="8" placeholder="Add character backstory, personality traits, goals, or other notes..." class="w-full border rounded p-3 font-mono text-sm focus:outline-none focus:border-purple-500">{{ character.notes or '' }}</textarea>
+                    
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancelNotes" class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">Save Notes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <!-- Ability Scores -->
         <h2 class="font-semibold text-gray-700 mb-2">Ability Scores</h2>
         <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
@@ -118,28 +147,43 @@
           {% endif %}
         </div>
 
-        <!-- Spell Slots -->
+        <!-- Spell Slots with Interactive Boxes -->
         <div class="mb-6">
-          <h2 class="font-semibold text-gray-700 mb-2">Spell Slots</h2>
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="font-semibold text-gray-700">Spell Slots</h2>
+            <form method="POST" action="{{ url_for('character_details', char_id=character.id) }}#spell-slots" style="display:inline;">
+              <button type="submit" name="action" value="reset_spells" class="text-sm px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Long Rest (Reset)</button>
+            </form>
+          </div>
+          
           {% if character.spell_slots and character.spell_slots|length > 0 %}
-            <table class="w-full border rounded text-left">
-              <thead>
-                <tr class="bg-gray-100">
-                    <th class="px-2 py-1 border">Level</th>
-                    <th class="px-2 py-1 border">Total Slots</th>
-                    <th class="px-2 py-1 border">Remaining Slots</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for slot in character.spell_slots|sort(attribute='level') %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-2 py-1 border">{{ slot.level }}</td>
-                        <td class="px-2 py-1 border">{{ slot.total_slots }}</td>
-                        <td class="px-2 py-1 border">{{ slot.remaining_slots }}</td>
-                    </tr>
+            {% set active_slots = character.spell_slots | selectattr('total_slots', '>', 0) | list %}
+            {% if active_slots|length > 0 %}
+              <div class="space-y-4">
+                {% for slot in active_slots | sort(attribute='level') %}
+                  {% set used_count = slot.total_slots - slot.remaining_slots %}
+                  <div class="mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="font-semibold text-gray-700">Level {{ slot.level }} Spells</span>
+                      <span class="text-xs text-gray-600">{{ slot.remaining_slots }}/{{ slot.total_slots }}</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2" data-level="{{ slot.level }}">
+                      {% for i in range(1, slot.total_slots + 1) %}
+                        <button type="button" 
+                                class="w-8 h-8 rounded border-2 transition {% if i <= used_count %}bg-red-400 border-red-600 hover:bg-red-500{% else %}bg-blue-400 border-blue-600 hover:bg-blue-500{% endif %}"
+                                data-slot-id="{{ slot.id }}"
+                                data-level="{{ slot.level }}"
+                                onclick="toggleSpellSlot(event, {{ character.id }}, {{ slot.id }}, {{ i }})">
+                          {{ i }}
+                        </button>
+                      {% endfor %}
+                    </div>
+                  </div>
                 {% endfor %}
-              </tbody>
-            </table>
+              </div>
+            {% else %}
+              <p class="text-sm text-gray-500 italic">No spell slots available for this level.</p>
+            {% endif %}
           {% else %}
             <p class="text-sm text-gray-500 italic">This character has no spell slots yet.</p>
           {% endif %}
@@ -209,7 +253,7 @@
         <!-- Spell Stats Popup Modal -->
         <div id="spellStatsModal"
              class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-lg w-80 p-6 text-center relative">
+            <div class="rounded-lg shadow-md w-80 p-6 text-center relative" style="background-color: #fafbfc;">
                 <button id="closeSpellStats"
                         class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
                 <h2 class="text-xl font-semibold mb-4 text-blue-700">Spell Information</h2>
@@ -221,7 +265,7 @@
         <!-- Manage Prepared Spells Modal -->
         <div id="managePreparedModal"
              class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-5 relative">
+            <div class="rounded-lg shadow-md w-full max-w-lg p-5 relative" style="background-color: #fafbfc;">
                 <button id="closeManagePrepared"
                         class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
                 <h3 class="text-lg font-semibold mb-3">Select Prepared Spells</h3>
@@ -263,7 +307,7 @@
         <!-- Delete Confirmation Modal -->
         <div id="deleteModal"
              class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
-            <div class="bg-white rounded-lg shadow-lg w-full max-w-sm p-5 relative">
+            <div class="rounded-lg shadow-md w-full max-w-sm p-5 relative" style="background-color: #fafbfc;">
                 <button id="closeDelete"
                         class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
                 <h3 class="text-lg font-semibold mb-3 text-red-700">Delete Character?</h3>
@@ -282,6 +326,37 @@
         </div>
 
         <script>
+            // Spell slot toggle function
+            async function toggleSpellSlot(event, charId, slotId, slotNumber) {
+                event.preventDefault();
+                const button = event.target;
+                
+                try {
+                    // Determine if we're using a slot (red) or restoring it (blue)
+                    const isUsing = button.classList.contains('bg-blue-400');
+                    
+                    const response = await fetch(`/api/characters/${charId}/spell-slots/${slotId}/toggle`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ use_slot: isUsing })
+                    });
+                    
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    
+                    // Toggle the button appearance
+                    if (isUsing) {
+                        button.classList.remove('bg-blue-400', 'border-blue-600', 'hover:bg-blue-500');
+                        button.classList.add('bg-red-400', 'border-red-600', 'hover:bg-red-500');
+                    } else {
+                        button.classList.remove('bg-red-400', 'border-red-600', 'hover:bg-red-500');
+                        button.classList.add('bg-blue-400', 'border-blue-600', 'hover:bg-blue-500');
+                    }
+                } catch (error) {
+                    console.error('Error toggling spell slot:', error);
+                    alert('Failed to toggle spell slot. Please try again.');
+                }
+            }
+
             // Spell Stats modal
             const statsModal = document.getElementById("spellStatsModal");
             const openStats = document.getElementById("spellStatsBtn");
@@ -333,6 +408,48 @@
             closeDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
             cancelDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
             deleteModal?.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.classList.add('hidden'); });
+
+            // Notes modal
+            const notesBtn = document.getElementById('notesBtn');
+            const notesModal = document.getElementById('notesModal');
+            const closeNotesModal = document.getElementById('closeNotesModal');
+            const cancelNotes = document.getElementById('cancelNotes');
+            
+            notesBtn?.addEventListener('click', () => {
+                notesModal.classList.remove('hidden');
+            });
+            
+            closeNotesModal?.addEventListener('click', () => {
+                notesModal.classList.add('hidden');
+            });
+            
+            cancelNotes?.addEventListener('click', () => {
+                notesModal.classList.add('hidden');
+            });
+            
+            notesModal?.addEventListener('click', (e) => {
+                if (e.target === notesModal) {
+                    notesModal.classList.add('hidden');
+                }
+            });
+
+            // Favorite button toggle
+            const favoriteBtn = document.getElementById('favoriteBtn');
+            favoriteBtn?.addEventListener('click', async () => {
+                const charId = {{ character.id }};
+                const res = await fetch(`/characters/${charId}/toggle_favorite`, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.favorite) {
+                    favoriteBtn.classList.remove('bg-gray-400', 'hover:bg-gray-500');
+                    favoriteBtn.classList.add('bg-yellow-500', 'hover:bg-yellow-600');
+                    favoriteBtn.textContent = '⭐ Favorited';
+                } else {
+                    favoriteBtn.classList.remove('bg-yellow-500', 'hover:bg-yellow-600');
+                    favoriteBtn.classList.add('bg-gray-400', 'hover:bg-gray-500');
+                    favoriteBtn.textContent = '⭐ Add to Favorites';
+                }
+            });
         </script>
     {% endif %}
 </div>

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}User Profile{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto p-6">
+    <h1 class="text-3xl font-bold text-blue-800 mb-6">User Profile</h1>
+
+    <!-- Profile Information -->
+    <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #fafbfc;">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Account Information</h2>
+        
+        <div class="mb-4">
+            <p class="text-sm text-gray-600">Username</p>
+            <p class="text-lg font-semibold text-gray-800">{{ user.username }}</p>
+        </div>
+
+        <div class="mb-4">
+            <p class="text-sm text-gray-600">Member Since</p>
+            <p class="text-lg font-semibold text-gray-800">
+                {% if user.created_at %}
+                    {{ user.created_at.strftime('%B %d, %Y') }}
+                {% else %}
+                    Unknown
+                {% endif %}
+            </p>
+        </div>
+
+        {% if user.last_login %}
+        <div class="mb-4">
+            <p class="text-sm text-gray-600">Last Login</p>
+            <p class="text-lg font-semibold text-gray-800">{{ user.last_login.strftime('%B %d, %Y at %I:%M %p') }}</p>
+        </div>
+        {% endif %}
+
+        {% if user.is_admin %}
+        <div class="mb-4">
+            <span class="inline-block bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">Administrator</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Edit Profile -->
+    <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #fafbfc;">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Edit Profile</h2>
+        
+        <form method="POST" action="{{ url_for('user_profile') }}" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+                <input type="email" name="email" value="{{ user.email or '' }}" 
+                       class="w-full border rounded p-2 focus:outline-none focus:border-blue-500"
+                       placeholder="your@email.com">
+                <p class="text-xs text-gray-500 mt-1">Used for account recovery</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Theme Preference</label>
+                <select name="theme" class="w-full border rounded p-2 focus:outline-none focus:border-blue-500">
+                    <option value="light" {% if user.theme_preference == 'light' %}selected{% endif %}>Light</option>
+                    <option value="dark" {% if user.theme_preference == 'dark' %}selected{% endif %}>Dark (Coming Soon)</option>
+                </select>
+            </div>
+
+            <div class="pt-2">
+                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Change Password -->
+    <div class="rounded-lg shadow-md p-6 mb-6" style="background-color: #fafbfc;">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Change Password</h2>
+        
+        <form method="POST" action="{{ url_for('change_password') }}" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+                <input type="password" name="current_password" required
+                       class="w-full border rounded p-2 focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+                <input type="password" name="new_password" required minlength="6"
+                       class="w-full border rounded p-2 focus:outline-none focus:border-blue-500">
+                <p class="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                <input type="password" name="confirm_password" required
+                       class="w-full border rounded p-2 focus:outline-none focus:border-blue-500">
+            </div>
+
+            <div class="pt-2">
+                <button type="submit" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700">
+                    Change Password
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Account Stats -->
+    <div class="rounded-lg shadow-md p-6" style="background-color: #fafbfc;">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800">Your Characters</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="p-4 bg-blue-50 rounded border border-blue-200">
+                <p class="text-sm text-blue-600 font-medium">Total Characters</p>
+                <p class="text-3xl font-bold text-blue-800">{{ user.characters|length }}</p>
+            </div>
+            
+            <div class="p-4 bg-purple-50 rounded border border-purple-200">
+                <p class="text-sm text-purple-600 font-medium">Favorite Characters</p>
+                <p class="text-3xl font-bold text-purple-800">{{ user.characters | selectattr('is_favorite') | list | length }}</p>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">View all your characters →</a>
+        </div>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <script>
+            // Flash messages are already displayed by base.html if needed
+        </script>
+    {% endif %}
+{% endwith %}
+{% endblock %}

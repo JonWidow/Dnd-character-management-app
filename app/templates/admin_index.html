@@ -7,20 +7,24 @@
     <h1 class="text-3xl font-bold mb-8 text-blue-800">Admin Panel</h1>
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-lg shadow p-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
+            <h3 class="text-gray-600 text-sm font-medium">Total Users</h3>
+            <p class="text-3xl font-bold text-green-800">{{ stats.total_users }}</p>
+        </div>
+        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
             <h3 class="text-gray-600 text-sm font-medium">Total Characters</h3>
             <p class="text-3xl font-bold text-blue-800">{{ stats.total_characters }}</p>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
             <h3 class="text-gray-600 text-sm font-medium">Character Classes</h3>
             <p class="text-3xl font-bold text-blue-800">{{ stats.total_classes }}</p>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
             <h3 class="text-gray-600 text-sm font-medium">Subclasses</h3>
             <p class="text-3xl font-bold text-blue-800">{{ stats.total_subclasses }}</p>
         </div>
-        <div class="bg-white rounded-lg shadow p-6">
+        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
             <h3 class="text-gray-600 text-sm font-medium">Races</h3>
             <p class="text-3xl font-bold text-blue-800">{{ stats.total_races }}</p>
         </div>
@@ -28,29 +32,36 @@
 
     <!-- Admin Menu -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- User Management -->
+        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
+            <h2 class="text-2xl font-bold mb-4 text-blue-800">User Management</h2>
+            <p class="text-gray-600 mb-4">Manage user accounts, roles, permissions, and account resets.</p>
+            <a href="{{ url_for('admin_users') }}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Manage Users</a>
+        </div>
+
         <!-- Classes Management -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
             <h2 class="text-2xl font-bold mb-4 text-blue-800">Character Classes</h2>
             <p class="text-gray-600 mb-4">Manage character classes, proficiencies, spell casting abilities, and subclass unlock levels.</p>
             <a href="{{ url_for('admin_classes') }}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Manage Classes</a>
         </div>
 
         <!-- Subclasses Management -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
             <h2 class="text-2xl font-bold mb-4 text-blue-800">Subclasses</h2>
             <p class="text-gray-600 mb-4">Add, edit, or delete character subclasses. Manage subclass unlock levels and descriptions.</p>
             <a href="{{ url_for('admin_subclasses') }}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Manage Subclasses</a>
         </div>
 
         <!-- Races Management (Placeholder) -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
             <h2 class="text-2xl font-bold mb-4 text-blue-800">Races</h2>
             <p class="text-gray-600 mb-4">Manage player character races, ability bonuses, and racial features.</p>
             <button disabled class="inline-block bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed">Coming Soon</button>
         </div>
 
         <!-- Database (Placeholder) -->
-        <div class="bg-white rounded-lg shadow-lg p-6">
+        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
             <h2 class="text-2xl font-bold mb-4 text-blue-800">Database</h2>
             <p class="text-gray-600 mb-4">Database maintenance, backups, and data integrity checks.</p>
             <button disabled class="inline-block bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed">Coming Soon</button>

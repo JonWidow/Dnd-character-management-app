@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Admin - User Management{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto p-6">
+    <h1 class="text-3xl font-bold text-blue-800 mb-6">User Management</h1>
+
+    <div class="rounded-lg shadow-md p-6" style="background-color: #fafbfc;">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="border-b-2 border-gray-300">
+                        <th class="text-left p-3 font-semibold text-gray-700">Username</th>
+                        <th class="text-left p-3 font-semibold text-gray-700">Email</th>
+                        <th class="text-left p-3 font-semibold text-gray-700">Role</th>
+                        <th class="text-left p-3 font-semibold text-gray-700">Joined</th>
+                        <th class="text-left p-3 font-semibold text-gray-700">Last Login</th>
+                        <th class="text-left p-3 font-semibold text-gray-700">Characters</th>
+                        <th class="text-left p-3 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users.items %}
+                    <tr class="border-b border-gray-200 hover:bg-blue-50 transition">
+                        <td class="p-3 font-medium text-gray-800">{{ user.username }}</td>
+                        <td class="p-3 text-gray-700">{{ user.email or '—' }}</td>
+                        <td class="p-3">
+                            {% if user.is_admin %}
+                                <span class="inline-block bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">Admin</span>
+                            {% else %}
+                                <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">User</span>
+                            {% endif %}
+                        </td>
+                        <td class="p-3 text-sm text-gray-600">
+                            {% if user.created_at %}
+                                {{ user.created_at.strftime('%m/%d/%Y') }}
+                            {% else %}
+                                Unknown
+                            {% endif %}
+                        </td>
+                        <td class="p-3 text-sm text-gray-600">
+                            {% if user.last_login %}
+                                {{ user.last_login.strftime('%m/%d/%Y %H:%M') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
+                        <td class="p-3 font-medium text-gray-800">{{ user.characters|length }}</td>
+                        <td class="p-3 space-x-2">
+                            {% if user.id != current_user.id %}
+                                <form method="POST" style="display: inline;">
+                                    <input type="hidden" name="action" value="toggle_admin">
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <button type="submit" class="px-3 py-1 text-sm rounded {% if user.is_admin %}bg-blue-100 text-blue-800 hover:bg-blue-200{% else %}bg-gray-100 text-gray-800 hover:bg-gray-200{% endif %}">
+                                        {% if user.is_admin %}Revoke Admin{% else %}Make Admin{% endif %}
+                                    </button>
+                                </form>
+                                
+                                <form method="POST" style="display: inline;" onclick="return confirm('Reset password to TempPass123!?');">
+                                    <input type="hidden" name="action" value="reset_password">
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <button type="submit" class="px-3 py-1 text-sm rounded bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
+                                        Reset Pass
+                                    </button>
+                                </form>
+                            {% else %}
+                                <span class="text-gray-500 text-sm italic">You</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if users.pages > 1 %}
+        <div class="mt-6 flex justify-center items-center space-x-2">
+            {% if users.has_prev %}
+                <a href="{{ url_for('admin_users', page=users.prev_num) }}" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">← Previous</a>
+            {% endif %}
+            
+            {% for page_num in users.iter_pages() %}
+                {% if page_num %}
+                    {% if page_num == users.page %}
+                        <span class="px-3 py-1 bg-blue-600 text-white rounded font-semibold">{{ page_num }}</span>
+                    {% else %}
+                        <a href="{{ url_for('admin_users', page=page_num) }}" class="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">{{ page_num }}</a>
+                    {% endif %}
+                {% else %}
+                    <span class="px-2 text-gray-500">...</span>
+                {% endif %}
+            {% endfor %}
+            
+            {% if users.has_next %}
+                <a href="{{ url_for('admin_users', page=users.next_num) }}" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">Next →</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="mt-4">
+        <a href="{{ url_for('admin_index') }}" class="text-blue-600 hover:underline">← Back to Admin Panel</a>
+    </div>
+</div>
+{% endblock %}

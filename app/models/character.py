@@ -52,6 +52,10 @@ class Character(db.Model):
 
     max_hp = db.Column(db.Integer, default=0)
     current_hp = db.Column(db.Integer, default=0)
+    
+    # New fields for favorites and notes
+    is_favorite = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text, default='')  # Character notes/backstory
 
     spells = db.relationship('Spell', secondary='character_spells', back_populates='known_by')
 

@@ -3,7 +3,7 @@
 {% block title %}{{ spell['name'] }} - Spell Details{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+<div class="max-w-3xl mx-auto bg-white rounded-lg p-6 shadow-md" style="background-color: #fafbfc;">
     <h1 class="text-3xl font-bold mb-4 text-blue-800">{{ spell['name'] }}</h1>
 
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4 text-gray-700 text-sm">
@@ -20,11 +20,11 @@
     {% endif %}
 
     <h2 class="text-xl font-semibold mb-2">Description</h2>
-    <p class="whitespace-pre-wrap mb-4">{{ spell['description'] }}</p>
+    <p class="whitespace-pre-wrap mb-4 leading-relaxed" style="font-family: Georgia, 'Times New Roman', serif; font-size: 1.05rem; color: #333;">{{ spell['description'] }}</p>
 
     {% if spell['higher_level'] %}
     <h2 class="text-xl font-semibold mb-2">At Higher Levels</h2>
-    <p class="whitespace-pre-wrap">{{ spell['higher_level'] }}</p>
+    <p class="whitespace-pre-wrap leading-relaxed" style="font-family: Georgia, 'Times New Roman', serif; font-size: 1.05rem; color: #333;">{{ spell['higher_level'] }}</p>
     {% endif %}
 </div>
 {% endblock %}

@@ -17,14 +17,14 @@
   <!-- Class Stats Cards -->
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
     <!-- Hit Die -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <div class="text-gray-600 text-sm font-semibold mb-1">HIT DIE</div>
       <div class="text-4xl font-bold text-blue-600">d{{ character_class.hit_die }}</div>
       <p class="text-gray-600 text-sm mt-2">Determines HP per level</p>
     </div>
 
     <!-- Spellcasting Ability -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <div class="text-gray-600 text-sm font-semibold mb-1">SPELLCASTING</div>
       {% if character_class.spellcasting_ability %}
         <div class="text-4xl font-bold text-purple-600">{{ character_class.spellcasting_ability }}</div>
@@ -36,7 +36,7 @@
     </div>
 
     <!-- Prepares Spells -->
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <div class="text-gray-600 text-sm font-semibold mb-1">SPELL PREPARATION</div>
       <div class="text-3xl font-bold {% if character_class.prepares_spells %}text-green-600{% else %}text-gray-400{% endif %}">
         {{ "✓" if character_class.prepares_spells else "✗" }}
@@ -47,7 +47,7 @@
 
   <!-- Description -->
   {% if character_class.description %}
-    <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <div class="rounded-lg shadow p-6 mb-8" style="background-color: #fafbfc;">
       <h2 class="text-2xl font-bold text-gray-800 mb-4">Overview</h2>
       <div class="prose prose-sm max-w-none text-gray-700">
         {{ character_class.description | safe }}
@@ -58,7 +58,7 @@
   <!-- Proficiencies -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
     {% if character_class.skill_proficiencies or character_class.skill_choice_count > 0 %}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <h3 class="text-lg font-bold text-gray-800 mb-3">Skill Proficiencies</h3>
       <div class="space-y-3">
         {% if character_class.skill_choice_count > 0 and character_class.skill_proficiencies %}
@@ -84,7 +84,7 @@
     {% endif %}
 
     {% if character_class.saving_throw_proficiencies %}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <h3 class="text-lg font-bold text-gray-800 mb-3">Saving Throw Proficiencies</h3>
       <div class="flex flex-wrap gap-2">
         {% set save_list = character_class.saving_throw_proficiencies | ensure_list %}
@@ -96,7 +96,7 @@
     {% endif %}
 
     {% if character_class.armor_proficiencies %}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <h3 class="text-lg font-bold text-gray-800 mb-3">Armor Proficiencies</h3>
       <div class="flex flex-wrap gap-2">
         {% set armor_list = character_class.armor_proficiencies | ensure_list %}
@@ -108,7 +108,7 @@
     {% endif %}
 
     {% if character_class.weapon_proficiencies %}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <h3 class="text-lg font-bold text-gray-800 mb-3">Weapon Proficiencies</h3>
       <div class="flex flex-wrap gap-2">
         {% set weapon_list = character_class.weapon_proficiencies | ensure_list %}
@@ -120,7 +120,7 @@
     {% endif %}
 
     {% if character_class.tool_proficiencies %}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <h3 class="text-lg font-bold text-gray-800 mb-3">Tool Proficiencies</h3>
       <div class="flex flex-wrap gap-2">
         {% set tool_list = character_class.tool_proficiencies | ensure_list %}
@@ -195,7 +195,7 @@
   <!-- Subclasses Section -->
   {% set subclasses = character_class.subclasses.all() %}
   {% if subclasses %}
-    <div class="bg-white rounded-lg shadow p-6">
+    <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
       <h2 class="text-2xl font-bold text-gray-800 mb-6">Subclasses ({{ subclasses|length }})</h2>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

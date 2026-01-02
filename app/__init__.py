@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify, abort, redirect, url
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User
 from app.models.character_struct import CharacterClassFeature, RaceFeature, SubclassFeature, SubclassModel
+from app.models.spell_slots import CharacterSpellSlot
 from app.grid import grid_bp
 from app.extensions import socketio
 from sqlalchemy import func
@@ -162,6 +163,9 @@ def login():
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
+            from datetime import datetime
+            user.last_login = datetime.utcnow()
+            db.session.commit()
             login_user(user)
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('home'))
@@ -177,9 +181,56 @@ def logout():
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('home'))
+
+
+@app.route('/user/profile', methods=['GET', 'POST'])
+@login_required
+def user_profile():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip()
+        theme = request.form.get('theme', 'light')
+        
+        # Validate email uniqueness
+        if email and email != current_user.email:
+            existing = User.query.filter_by(email=email).first()
+            if existing:
+                flash('Email already in use.', 'error')
+                return redirect(url_for('user_profile'))
+        
+        current_user.email = email if email else None
+        current_user.theme_preference = theme
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
+        return redirect(url_for('user_profile'))
+    
+    return render_template('user_profile.html', user=current_user)
+
+
+@app.route('/user/settings/password', methods=['POST'])
+@login_required
+def change_password():
+    current_pass = request.form.get('current_password', '')
+    new_pass = request.form.get('new_password', '')
+    confirm_pass = request.form.get('confirm_password', '')
+    
+    if not current_user.check_password(current_pass):
+        flash('Current password is incorrect.', 'error')
+    elif len(new_pass) < 6:
+        flash('New password must be at least 6 characters.', 'error')
+    elif new_pass != confirm_pass:
+        flash('Passwords do not match.', 'error')
+    else:
+        current_user.set_password(new_pass)
+        db.session.commit()
+        flash('Password changed successfully.', 'success')
+    
+    return redirect(url_for('user_profile'))
+
+
 def get_skills():
     skills = Skill.query.all()
     return jsonify([skill.to_dict() for skill in skills])
+
 
 @app.route('/add_character', methods=['GET','POST'])
 def add_character():
@@ -224,8 +275,40 @@ def admin_index():
         'total_classes': CharacterClassModel.query.count(),
         'total_subclasses': SubclassModel.query.count(),
         'total_races': RaceModel.query.count(),
+        'total_users': User.query.count(),
     }
     return render_template('admin_index.html', stats=stats)
+
+
+@app.route('/admin/users', methods=['GET', 'POST'])
+@login_required
+def admin_users():
+    """Manage users and their roles."""
+    _require_admin()
+    
+    if request.method == 'POST':
+        action = request.form.get('action')
+        user_id = request.form.get('user_id', type=int)
+        
+        user = User.query.get_or_404(user_id)
+        
+        if action == 'toggle_admin':
+            user.is_admin = not user.is_admin
+            db.session.commit()
+            status = "admin" if user.is_admin else "regular user"
+            flash(f"{user.username} is now a {status}.", "success")
+        elif action == 'reset_password':
+            temp_password = 'TempPass123!'
+            user.set_password(temp_password)
+            db.session.commit()
+            flash(f"Password for {user.username} reset to: {temp_password}", "success")
+        
+        return redirect(url_for('admin_users'))
+    
+    page = request.args.get('page', 1, type=int)
+    users = User.query.paginate(page=page, per_page=20)
+    
+    return render_template('admin_users.html', users=users)
 
 @app.route('/admin/classes', methods=['GET', 'POST'])
 @login_required
@@ -383,10 +466,21 @@ def characters():
         else:
             return render_template('character_details.html', character=None)
 
-@app.route('/characters/<int:char_id>')
+@app.route('/characters/<int:char_id>', methods=['GET', 'POST'])
 @login_required
 def character_details(char_id):
     char = Character.query.get_or_404(char_id)
+
+    # Handle POST actions
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'reset_spells':
+            # Reset all spell slots to their maximum (long rest)
+            for slot in char.spell_slots:
+                slot.remaining_slots = slot.total_slots
+            db.session.commit()
+            flash('Spell slots reset on long rest!', 'success')
+            return redirect(url_for('character_details', char_id=char_id))
 
     cls = _class_row_for(char)
     known_spells_count = len(getattr(char, "spells", []) or [])
@@ -433,12 +527,18 @@ def api_class_subclasses(class_id: int):
     })
 
 @app.route('/api/characters')
+@login_required
 def api_characters():
     name = request.args.get('q', '')
+    # Filter by ownership unless user is admin
+    query = Character.query
+    if not current_user.is_admin:
+        query = query.filter_by(user_id=current_user.id)
+    
     if name:
-        chars = Character.query.filter(Character.name.ilike(f"%{name}%")).all()
+        chars = query.filter(Character.name.ilike(f"%{name}%")).all()
     else:
-        chars = Character.query.all()
+        chars = query.all()
 
     result = []
     for char in chars:
@@ -453,6 +553,42 @@ def api_characters():
         })
 
     return jsonify(result)
+
+
+@app.route('/api/characters/<int:char_id>/spell-slots/<int:slot_id>/toggle', methods=['POST'])
+@login_required
+def toggle_spell_slot(char_id, slot_id):
+    """Toggle a spell slot as used/available."""
+    char = Character.query.get_or_404(char_id)
+    
+    # Verify ownership (unless admin)
+    if not current_user.is_admin and char.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    slot = CharacterSpellSlot.query.filter_by(id=slot_id, character_id=char_id).first_or_404()
+    
+    try:
+        data = request.get_json() or {}
+        use_slot = data.get('use_slot', True)
+        
+        if use_slot:
+            # User wants to use a slot (decrement remaining)
+            if slot.remaining_slots > 0:
+                slot.remaining_slots -= 1
+        else:
+            # User wants to restore a slot (increment remaining)
+            if slot.remaining_slots < slot.total_slots:
+                slot.remaining_slots += 1
+        
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'remaining_slots': slot.remaining_slots,
+            'total_slots': slot.total_slots
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/features/<int:feature_id>')
@@ -523,6 +659,10 @@ def edit_character(char_id: int):
             # If level changed, sync spell slots
             if old_level != lvl:
                 char.sync_spell_slots()
+
+        # Handle notes
+        notes = request.form.get('notes', '')
+        char.notes = notes
 
         for key in ['str_sc','dex_sc','con_sc','int_sc','wis_sc','cha_sc']:
             val = request.form.get(key, type=int)
@@ -645,6 +785,22 @@ def prepare_spells(char_id: int):
     db.session.commit()
     flash("Prepared spells saved.", "success")
     return redirect(url_for("character_details", char_id=char.id))
+
+
+@app.route("/characters/<int:char_id>/toggle_favorite", methods=["POST"])
+@login_required
+def toggle_favorite(char_id: int):
+    char = Character.query.get_or_404(char_id)
+    
+    # Check ownership
+    if char.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+    
+    char.is_favorite = not char.is_favorite
+    db.session.commit()
+    
+    return jsonify({'favorite': char.is_favorite})
+
 
 @app.route("/race/<race_name>")
 def show_race(race_name):

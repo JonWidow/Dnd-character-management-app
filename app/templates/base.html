@@ -9,6 +9,9 @@
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
     <style>
+        body {
+            background-color: #f8f9fa;
+        }
         /* Ensure badge colors are available */
         .bg-amber-100 { background-color: #FEF3C7; }
         .text-amber-800 { color: #92400E; }
@@ -34,8 +37,29 @@
                 <a href="{{ url_for('home') }}" class="text-white hover:underline">Home</a>
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('characters') }}" class="text-white hover:underline">Characters</a>
-                    {% if current_user.is_admin %}
-                        <a href="{{ url_for('admin_index') }}" class="text-white hover:underline">Admin</a>
+                    <a href="{{ url_for('user_profile') }}" class="text-white hover:underline">Profile</a>
+                {% if current_user.is_admin %}
+                        <div class="relative">
+                            <button id="adminBtn" class="text-white hover:underline">Admin ▼</button>
+                            <div id="adminMenu" class="absolute hidden bg-blue-900 rounded shadow-lg mt-2 w-48 right-0 z-50">
+                                <a href="{{ url_for('admin_index') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Dashboard</a>
+                                <a href="{{ url_for('admin_users') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Users</a>
+                                <a href="{{ url_for('admin_classes') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Classes</a>
+                                <a href="{{ url_for('admin_subclasses') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Subclasses</a>
+                            </div>
+                        </div>
+                        <script>
+                            const adminBtn = document.getElementById('adminBtn');
+                            const adminMenu = document.getElementById('adminMenu');
+                            adminBtn.addEventListener('click', () => {
+                                adminMenu.classList.toggle('hidden');
+                            });
+                            document.addEventListener('click', (e) => {
+                                if (!adminBtn.contains(e.target) && !adminMenu.contains(e.target)) {
+                                    adminMenu.classList.add('hidden');
+                                }
+                            });
+                        </script>
                     {% endif %}
                     <span class="text-white">{{ current_user.username }}</span>
                     <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">

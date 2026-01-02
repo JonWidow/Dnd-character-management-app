@@ -2,7 +2,7 @@
 {% block title %}{{ feature.name }} - Feature Details{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+<div class="max-w-3xl mx-auto rounded-lg p-6 shadow-md" style="background-color: #fafbfc;">
   <h1 class="text-3xl font-bold mb-4 text-blue-800">{{ feature.name }}</h1>
 
   <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4 text-gray-700 text-sm">
@@ -17,7 +17,7 @@
   {% endif %}
 
   <h2 class="text-xl font-semibold mb-2">Description</h2>
-  <p class="whitespace-pre-wrap">{{ feature.description }}</p>
+  <p class="whitespace-pre-wrap leading-relaxed" style="font-family: Georgia, 'Times New Roman', serif; font-size: 1.05rem; color: #333;">{{ feature.description }}</p>
 
   <div class="mt-6">
     <a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">Back to Characters</a>

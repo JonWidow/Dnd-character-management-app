@@ -3,7 +3,7 @@
 {% block title %}Add New Character{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
+<div class="max-w-3xl mx-auto shadow-md rounded-lg p-6" style="background-color: #fafbfc;">
     <h1 class="text-2xl font-bold mb-4 text-blue-800">Enter New Character Information</h1>
 
     <form action="{{ url_for('add_character') }}" method="post" class="space-y-4">
