@@ -676,18 +676,6 @@ def edit_character(char_id: int):
     char = Character.query.get_or_404(char_id)
 
     cls = _class_row_for(char)
-    
-    # Get max spell level character has slots for
-    max_spell_level = 0
-    for slot in char.spell_slots:
-        if slot.total_slots > 0:
-            max_spell_level = max(max_spell_level, slot.level)
-    
-    # Get class spells, filtered by max spell level character can use
-    if cls:
-        available_spells = [s for s in cls.spells if s.level <= max_spell_level]
-    else:
-        available_spells = Spell.query.filter(Spell.level <= max_spell_level).order_by(Spell.level.asc(), Spell.name.asc()).all()
 
     if request.method == 'POST':
         nm = request.form.get('name')
@@ -700,9 +688,19 @@ def edit_character(char_id: int):
         if lvl and lvl >= 1:
             old_level = char.level
             char.level = lvl
-            # If level changed, sync spell slots
+            # If level changed, sync spell slots FIRST before calculating available spells
             if old_level != lvl:
                 char.sync_spell_slots()
+                # Recalculate HP based on new level
+                if char.char_class:
+                    con_mod = char.sc_to_mod(char.con_sc)
+                    hit_die_val = int(char.char_class.hit_die.replace('d', '')) if 'd' in str(char.char_class.hit_die) else char.char_class.hit_die
+                    # HP = hit_die + (level - 1) * (hit_die / 2 or average) + con_mod * level
+                    # Simplified: HP increases by average hit die per level (rounded up)
+                    # For now, recalculate total HP as: first level gets full hit die, subsequent levels get hit_die/2 average
+                    avg_hit_die = (hit_die_val + 1) // 2  # Average roll (e.g., d8 = 5)
+                    char.max_hp = hit_die_val + (lvl - 1) * avg_hit_die + con_mod * lvl
+                    char.current_hp = char.max_hp
 
         # Handle notes
         notes = request.form.get('notes', '')
@@ -741,6 +739,19 @@ def edit_character(char_id: int):
         db.session.commit()
         flash('Character updated.', 'success')
         return redirect(url_for('character_details', char_id=char.id))
+
+    # After handling POST (if any), calculate available spells based on current character state
+    # Get max spell level character has slots for
+    max_spell_level = 0
+    for slot in char.spell_slots:
+        if slot.total_slots > 0:
+            max_spell_level = max(max_spell_level, slot.level)
+    
+    # Get class spells, filtered by max spell level character can use
+    if cls:
+        available_spells = [s for s in cls.spells if s.level <= max_spell_level]
+    else:
+        available_spells = Spell.query.filter(Spell.level <= max_spell_level).order_by(Spell.level.asc(), Spell.name.asc()).all()
 
     return render_template('edit_character.html',
                            character=char,
