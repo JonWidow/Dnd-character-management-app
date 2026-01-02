@@ -513,6 +513,35 @@
                 contextMenu.style.display = 'none';
             }
         });
+
+        // Make stats panel draggable
+        const statsPanel = document.getElementById('statsPanel');
+        const characterNameHeader = document.getElementById('characterName');
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        characterNameHeader.style.cursor = 'grab';
+
+        characterNameHeader.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            dragOffsetX = e.clientX - statsPanel.offsetLeft;
+            dragOffsetY = e.clientY - statsPanel.offsetTop;
+            characterNameHeader.style.cursor = 'grabbing';
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                statsPanel.style.left = (e.clientX - dragOffsetX) + 'px';
+                statsPanel.style.top = (e.clientY - dragOffsetY) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            characterNameHeader.style.cursor = 'grab';
+        });
     </script>
 </body>
 </html>
