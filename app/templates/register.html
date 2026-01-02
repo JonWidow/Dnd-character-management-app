@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto p-6 mt-8">
+  <h1 class="text-3xl font-bold mb-6 text-center text-blue-800">Create Account</h1>
+  
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for message in messages %}
+        <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" class="space-y-4">
+    <div>
+      <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+      <input type="text" id="username" name="username" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500">
+    </div>
+
+    <div>
+      <label for="email" class="block text-sm font-medium text-gray-700">Email (Optional)</label>
+      <input type="email" id="email" name="email" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500">
+    </div>
+
+    <div>
+      <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+      <input type="password" id="password" name="password" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500">
+    </div>
+
+    <div>
+      <label for="confirm_password" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+      <input type="password" id="confirm_password" name="confirm_password" required class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500">
+    </div>
+
+    <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-md hover:bg-blue-700 transition">
+      Create Account
+    </button>
+  </form>
+
+  <p class="text-center mt-4 text-gray-600">
+    Already have an account? 
+    <a href="{{ url_for('login') }}" class="text-blue-600 hover:underline">Login</a>
+  </p>
+</div>
+{% endblock %}

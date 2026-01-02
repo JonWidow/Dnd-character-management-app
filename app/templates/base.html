@@ -29,11 +29,22 @@
     <!-- Header -->
     <header class="sticky top-0 z-50 bg-blue-800 text-white p-4 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">My App</h1>
-            <nav class="space-x-4">
+            <h1 class="text-xl font-bold">D&D Character Manager</h1>
+            <nav class="space-x-4 flex items-center">
                 <a href="{{ url_for('home') }}" class="text-white hover:underline">Home</a>
-                <a href="{{ url_for('characters') }}" class="text-white hover:underline">Characters</a>
-                <a href="{{ url_for('admin_index') }}" class="text-white hover:underline">Admin</a>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('characters') }}" class="text-white hover:underline">Characters</a>
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('admin_index') }}" class="text-white hover:underline">Admin</a>
+                    {% endif %}
+                    <span class="text-white">{{ current_user.username }}</span>
+                    <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">
+                        <button type="submit" class="text-white hover:underline">Logout</button>
+                    </form>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="text-white hover:underline">Login</a>
+                    <a href="{{ url_for('register') }}" class="text-white hover:underline">Register</a>
+                {% endif %}
             </nav>
         </div>
     </header>

@@ -1,6 +1,7 @@
 # app.py
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, flash
-from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User
 from app.models.character_struct import CharacterClassFeature, RaceFeature, SubclassFeature, SubclassModel
 from app.grid import grid_bp
 from app.extensions import socketio
@@ -20,6 +21,16 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
 
 db.init_app(app)
+
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access this page.'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 # Initialize database
 with app.app_context():
@@ -78,12 +89,94 @@ def _class_row_for(character):
             .filter(db.func.lower(CharacterClassModel.name) == db.func.lower(name))
             .first())
 
+def _require_admin():
+    """Helper to check admin access."""
+    if not current_user.is_authenticated or not current_user.is_admin:
+        abort(403)
+
 # ---------- Routes ----------
 @app.route('/')
 def home():
     return render_template('home.html')
 
-@app.route('/skills', methods=['GET'])
+
+# ========== AUTHENTICATION ROUTES ==========
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip() or None
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+        
+        # Validation
+        if not username:
+            flash('Username is required.', 'error')
+            return redirect(url_for('register'))
+        
+        if len(username) < 3:
+            flash('Username must be at least 3 characters long.', 'error')
+            return redirect(url_for('register'))
+        
+        if User.query.filter_by(username=username).first():
+            flash('Username already exists.', 'error')
+            return redirect(url_for('register'))
+        
+        if email and User.query.filter_by(email=email).first():
+            flash('Email already registered.', 'error')
+            return redirect(url_for('register'))
+        
+        if not password or len(password) < 6:
+            flash('Password must be at least 6 characters long.', 'error')
+            return redirect(url_for('register'))
+        
+        if password != confirm_password:
+            flash('Passwords do not match.', 'error')
+            return redirect(url_for('register'))
+        
+        # Create user
+        user = User(username=username, email=email)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Account created successfully! Please log in.', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('register.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            login_user(user)
+            next_page = request.args.get('next')
+            return redirect(next_page) if next_page else redirect(url_for('home'))
+        else:
+            flash('Invalid username or password.', 'error')
+    
+    return render_template('login.html')
+
+
+@app.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out.', 'success')
+    return redirect(url_for('home'))
 def get_skills():
     skills = Skill.query.all()
     return jsonify([skill.to_dict() for skill in skills])
@@ -122,8 +215,10 @@ def add_character():
     return render_template('add_character.html', classes=classes, races=races)
 
 @app.route('/admin')
+@login_required
 def admin_index():
     """Admin dashboard."""
+    _require_admin()
     stats = {
         'total_characters': Character.query.count(),
         'total_classes': CharacterClassModel.query.count(),
@@ -133,8 +228,10 @@ def admin_index():
     return render_template('admin_index.html', stats=stats)
 
 @app.route('/admin/classes', methods=['GET', 'POST'])
+@login_required
 def admin_classes():
     """Manage character classes and their proficiencies."""
+    _require_admin()
     if request.method == 'POST':
         class_id = request.form.get('class_id', type=int)
         
@@ -193,7 +290,9 @@ def admin_classes():
     return render_template('admin_classes.html', classes=classes)
 
 @app.route('/admin/subclasses', methods=['GET', 'POST'])
+@login_required
 def admin_subclasses():
+    _require_admin()
     if request.method == 'POST':
         class_id = request.form.get('class_id', type=int)
         name = request.form.get('name', '').strip()
@@ -241,7 +340,9 @@ def subclass_details(subclass_id: int):
     return render_template('subclass_details.html', subclass=subclass)
 
 @app.route('/admin/subclasses/<int:subclass_id>/delete', methods=['POST'])
+@login_required
 def delete_subclass(subclass_id: int):
+    _require_admin()
     subclass = SubclassModel.query.get_or_404(subclass_id)
     class_name = subclass.character_class.name
     db.session.delete(subclass)
@@ -260,20 +361,30 @@ def delete_character(char_id: int):
 
 
 @app.route('/characters')
+@login_required
 def characters():
     name = request.args.get('name')
     if not name or name == '*':
-        chars = Character.query.all()
+        # Show only characters owned by the current user (or all if admin)
+        if current_user.is_admin:
+            chars = Character.query.all()
+        else:
+            chars = Character.query.filter_by(user_id=current_user.id).all()
         return render_template('list_characters.html', characters=chars)
     else:
         # If a name is provided, try to find the character
         char = Character.query.filter_by(name=name).first()
         if char:
-            return render_template('character_details.html', character=char)
+            # Check if user owns this character or is admin
+            if char.user_id == current_user.id or current_user.is_admin:
+                return render_template('character_details.html', character=char)
+            else:
+                abort(403)
         else:
             return render_template('character_details.html', character=None)
 
 @app.route('/characters/<int:char_id>')
+@login_required
 def character_details(char_id):
     char = Character.query.get_or_404(char_id)
 
