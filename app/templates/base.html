@@ -8,16 +8,32 @@
     <!-- TailwindCSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 
+    <style>
+        /* Ensure badge colors are available */
+        .bg-amber-100 { background-color: #FEF3C7; }
+        .text-amber-800 { color: #92400E; }
+        .bg-blue-100 { background-color: #DBEAFE; }
+        .text-blue-800 { color: #1E3A8A; }
+        .bg-purple-100 { background-color: #F3E8FF; }
+        .text-purple-800 { color: #6B21A8; }
+        .bg-red-100 { background-color: #FEE2E2; }
+        .text-red-800 { color: #991B1B; }
+        .bg-green-100 { background-color: #DCFCE7; }
+        .text-green-800 { color: #166534; }
+    </style>
+
     {% block head %}{% endblock %}
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
     <!-- Header -->
-    <header class="bg-blue-800 text-white p-4 shadow-md">
+    <header class="sticky top-0 z-50 bg-blue-800 text-white p-4 shadow-md">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-xl font-bold">My App</h1>
-            <nav>
+            <nav class="space-x-4">
                 <a href="{{ url_for('home') }}" class="text-white hover:underline">Home</a>
+                <a href="{{ url_for('characters') }}" class="text-white hover:underline">Characters</a>
+                <a href="{{ url_for('admin_index') }}" class="text-white hover:underline">Admin</a>
             </nav>
         </div>
     </header>

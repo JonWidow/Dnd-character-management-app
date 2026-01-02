@@ -14,17 +14,35 @@
 
         <div>
             <label for="char_class" class="block font-medium">Class:</label>
-            <input type="text" id="char_class" name="char_class" required class="w-full border rounded p-2">
+            <select id="char_class" name="char_class" required class="w-full border rounded p-2">
+                <option value="">-- Select a Class --</option>
+                {% for cls in classes %}
+                    <option value="{{ cls.name }}" data-class-id="{{ cls.id }}">{{ cls.name }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <div>
             <label for="race" class="block font-medium">Race:</label>
-            <input type="text" id="race" name="race" required class="w-full border rounded p-2">
+            <select id="race" name="race" required class="w-full border rounded p-2">
+                <option value="">-- Select a Race --</option>
+                {% for race in races %}
+                    <option value="{{ race.name }}">{{ race.name }}</option>
+                {% endfor %}
+            </select>
         </div>
 
         <div>
             <label for="level" class="block font-medium">Level:</label>
             <input type="number" id="level" name="level" min="1" value="1" class="w-24 border rounded p-2">
+        </div>
+
+        <div id="subclass_wrapper" style="display: none;">
+            <label for="subclass" class="block font-medium">Subclass:</label>
+            <select id="subclass" name="subclass" class="w-full border rounded p-2">
+                <option value="">-- Select a Subclass --</option>
+            </select>
+            <p id="subclass_note" class="text-sm text-gray-600 mt-1"></p>
         </div>
 
         <fieldset class="border border-gray-300 p-4 rounded">
@@ -60,4 +78,53 @@
         <button type="submit" class="bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-700 mt-4">Submit</button>
     </form>
 </div>
-{% endblock %}
+
+<script>
+async function updateSubclassDropdown() {
+    const classSelect = document.getElementById('char_class');
+    const levelInput = document.getElementById('level');
+    const subclassWrapper = document.getElementById('subclass_wrapper');
+    const subclassSelect = document.getElementById('subclass');
+    const subclassNote = document.getElementById('subclass_note');
+    
+    const selectedOption = classSelect.options[classSelect.selectedIndex];
+    const classId = selectedOption.getAttribute('data-class-id');
+    const level = parseInt(levelInput.value) || 1;
+    
+    if (!classId) {
+        subclassWrapper.style.display = 'none';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/classes/${classId}/subclasses`);
+        const data = await response.json();
+        
+        const unlockLevel = data.unlock_level;
+        
+        // Show subclass dropdown only if level >= unlock level and there are subclasses available
+        if (level >= unlockLevel && data.subclasses.length > 0) {
+            subclassWrapper.style.display = 'block';
+            subclassNote.textContent = `Select a subclass (unlocked at level ${unlockLevel})`;
+            
+            // Populate subclass options
+            subclassSelect.innerHTML = '<option value="">-- Select a Subclass --</option>';
+            data.subclasses.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub.name;
+                option.textContent = sub.name;
+                subclassSelect.appendChild(option);
+            });
+        } else {
+            subclassWrapper.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error fetching subclasses:', error);
+        subclassWrapper.style.display = 'none';
+    }
+}
+
+// Update subclass dropdown when class or level changes
+document.getElementById('char_class').addEventListener('change', updateSubclassDropdown);
+document.getElementById('level').addEventListener('change', updateSubclassDropdown);
+</script>{% endblock %}

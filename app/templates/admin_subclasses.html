@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Subclasses{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-6 text-blue-800">Manage Subclasses</h1>
+
+    <!-- Add New Subclass Form -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+        <h2 class="text-lg font-semibold mb-4 text-blue-900">Add New Subclass</h2>
+        <form action="{{ url_for('admin_subclasses') }}" method="post" class="space-y-4">
+            <div>
+                <label for="class_id" class="block font-medium">Class:</label>
+                <select id="class_id" name="class_id" required class="w-full border rounded p-2">
+                    <option value="">-- Select a Class --</option>
+                    {% for cls in classes %}
+                        <option value="{{ cls.id }}">{{ cls.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label for="name" class="block font-medium">Subclass Name:</label>
+                <input type="text" id="name" name="name" required class="w-full border rounded p-2" placeholder="e.g., Evocation, Champion, Thief">
+            </div>
+
+            <div>
+                <label for="description" class="block font-medium">Description:</label>
+                <textarea id="description" name="description" class="w-full border rounded p-2 h-32" placeholder="Optional description of the subclass"></textarea>
+            </div>
+
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Add Subclass</button>
+        </form>
+    </div>
+
+    <!-- Existing Subclasses -->
+    <div>
+        <h2 class="text-lg font-semibold mb-4 text-blue-900">Existing Subclasses</h2>
+        {% if subclasses %}
+            <div class="space-y-4">
+                {% for subclass in subclasses %}
+                    <div class="border border-gray-300 rounded-lg p-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-lg">
+                                    <a href="{{ url_for('subclass_details', subclass_id=subclass.id) }}" class="text-blue-600 hover:underline">
+                                        {{ subclass.name }}
+                                    </a>
+                                </h3>
+                                <p class="text-gray-600">Class: <span class="font-medium">{{ subclass.character_class.name }}</span></p>
+                                {% if subclass.description %}
+                                    <p class="text-gray-700 mt-2 text-sm">{{ subclass.description[:200] }}{% if subclass.description|length > 200 %}...{% endif %}</p>
+                                {% endif %}
+                            </div>
+                            <form action="{{ url_for('delete_subclass', subclass_id=subclass.id) }}" method="post" onsubmit="return confirm('Delete this subclass?');">
+                                <button type="submit" class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700">Delete</button>
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-600">No subclasses found. Add one using the form above.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

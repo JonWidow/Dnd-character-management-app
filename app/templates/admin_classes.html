@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Classes{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <h1 class="text-2xl font-bold mb-6 text-blue-800">Manage Character Classes</h1>
+
+    {% if classes %}
+        <div class="space-y-8">
+            {% for cls in classes %}
+            <div class="border-2 border-blue-200 rounded-lg p-6">
+                <!-- Class Header -->
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">{{ cls.name }}</h2>
+                        <p class="text-gray-600 text-sm">ID: {{ cls.id }}</p>
+                    </div>
+                    <a href="{{ url_for('show_character_class', class_name=cls.name) }}" class="text-blue-600 hover:underline text-sm">View Class →</a>
+                </div>
+
+                <form action="{{ url_for('admin_classes') }}" method="post" class="space-y-6">
+                    <input type="hidden" name="class_id" value="{{ cls.id }}">
+
+                    <!-- Basic Stats -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="hit_die_{{ cls.id }}" class="block font-medium mb-1">Hit Die:</label>
+                            <select name="hit_die" id="hit_die_{{ cls.id }}" class="w-full border rounded p-2">
+                                <option value="6" {% if cls.hit_die == 6 %}selected{% endif %}>d6</option>
+                                <option value="8" {% if cls.hit_die == 8 %}selected{% endif %}>d8</option>
+                                <option value="10" {% if cls.hit_die == 10 %}selected{% endif %}>d10</option>
+                                <option value="12" {% if cls.hit_die == 12 %}selected{% endif %}>d12</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="spellcasting_{{ cls.id }}" class="block font-medium mb-1">Spellcasting Ability:</label>
+                            <select name="spellcasting_ability" id="spellcasting_{{ cls.id }}" class="w-full border rounded p-2">
+                                <option value="">-- None (Non-spellcaster) --</option>
+                                <option value="STR" {% if cls.spellcasting_ability == 'STR' %}selected{% endif %}>STR</option>
+                                <option value="DEX" {% if cls.spellcasting_ability == 'DEX' %}selected{% endif %}>DEX</option>
+                                <option value="CON" {% if cls.spellcasting_ability == 'CON' %}selected{% endif %}>CON</option>
+                                <option value="INT" {% if cls.spellcasting_ability == 'INT' %}selected{% endif %}>INT</option>
+                                <option value="WIS" {% if cls.spellcasting_ability == 'WIS' %}selected{% endif %}>WIS</option>
+                                <option value="CHA" {% if cls.spellcasting_ability == 'CHA' %}selected{% endif %}>CHA</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="subclass_{{ cls.id }}" class="block font-medium mb-1">Subclass Unlock Level:</label>
+                            <select name="subclass_unlock_level" id="subclass_{{ cls.id }}" class="w-full border rounded p-2">
+                                <option value="1" {% if cls.subclass_unlock_level == 1 %}selected{% endif %}>Level 1</option>
+                                <option value="2" {% if cls.subclass_unlock_level == 2 %}selected{% endif %}>Level 2</option>
+                                <option value="3" {% if cls.subclass_unlock_level == 3 %}selected{% endif %}>Level 3</option>
+                                <option value="4" {% if cls.subclass_unlock_level == 4 %}selected{% endif %}>Level 4</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Spell Preparation -->
+                    <div class="border-t pt-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" name="prepares_spells" {% if cls.prepares_spells %}checked{% endif %} class="rounded">
+                            <span class="ml-2 font-medium">Prepares Spells (instead of knowing them)</span>
+                        </label>
+                    </div>
+
+                    <!-- Proficiencies -->
+                    <div class="border-t pt-4 space-y-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Proficiencies</h3>
+                        <p class="text-sm text-gray-600">Enter items separated by commas (e.g., "Acrobatics, Athletics, Insight")</p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block font-medium mb-1">Skill Proficiencies:</label>
+                                <input type="text" name="skill_proficiencies" class="w-full border rounded p-2" 
+                                       value="{{ cls.skill_proficiencies | join(', ') }}" 
+                                       placeholder="Acrobatics, Animal Handling, Arcana, ...">
+                            </div>
+
+                            <div>
+                                <label class="block font-medium mb-1">Choose N Skills From These:</label>
+                                <select name="skill_choice_count" class="w-full border rounded p-2">
+                                    <option value="0" {% if cls.skill_choice_count == 0 %}selected{% endif %}>No choice (mandatory only)</option>
+                                    {% for i in range(1, 7) %}
+                                        <option value="{{ i }}" {% if cls.skill_choice_count == i %}selected{% endif %}>Choose {{ i }} skill{% if i != 1 %}s{% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block font-medium mb-1">Armor Proficiencies:</label>
+                            <input type="text" name="armor_proficiencies" class="w-full border rounded p-2" 
+                                   value="{{ cls.armor_proficiencies | join(', ') }}" 
+                                   placeholder="Light armor, Medium armor, Heavy armor, Shields">
+                        </div>
+
+                        <div>
+                            <label class="block font-medium mb-1">Weapon Proficiencies:</label>
+                            <input type="text" name="weapon_proficiencies" class="w-full border rounded p-2" 
+                                   value="{{ cls.weapon_proficiencies | join(', ') }}" 
+                                   placeholder="Simple melee weapons, Martial weapons, ...">
+                        </div>
+
+                        <div>
+                            <label class="block font-medium mb-1">Tool Proficiencies:</label>
+                            <input type="text" name="tool_proficiencies" class="w-full border rounded p-2" 
+                                   value="{{ cls.tool_proficiencies | join(', ') }}" 
+                                   placeholder="Musical instruments, Thieves' tools, Smith's tools, ...">
+                        </div>
+
+                        <div>
+                            <label class="block font-medium mb-1">Saving Throw Proficiencies:</label>
+                            <input type="text" name="saving_throw_proficiencies" class="w-full border rounded p-2" 
+                                   value="{{ cls.saving_throw_proficiencies | join(', ') }}" 
+                                   placeholder="STR, DEX, CON, INT, WIS, CHA">
+                        </div>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="border-t pt-4">
+                        <label class="block font-medium mb-1">Description:</label>
+                        <textarea name="description" class="w-full border rounded p-2 h-24" placeholder="Class description">{{ cls.description or '' }}</textarea>
+                    </div>
+
+                    <!-- Save Button -->
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 font-medium">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-600">No classes found in database.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -17,7 +17,7 @@
       </div>
       <div>
         <label class="block text-sm font-medium">Character Class</label>
-        <input name="char_class" value="{{ character.char_class }}" class="w-full border rounded p-2" disabled>
+        <input name="char_class" value="{{ character.char_class_name }}" class="w-full border rounded p-2" disabled>
         <p class="text-xs text-gray-500">
           Class editing disabled here to avoid mismatch; change on a separate flow if needed.
         </p>
@@ -60,17 +60,41 @@
       </button>
 
       <div id="spellsSection" class="hidden p-4">
-        <p class="text-xs text-gray-500 mb-2">
-          Hold Ctrl/Cmd to multi-select. List is filtered by your character class if available.
+        <p class="text-xs text-gray-500 mb-4">
+          Hold Ctrl/Cmd to multi-select. Spells are organized by level.
         </p>
-        <select name="known_spells" multiple size="12" class="w-full border rounded p-2">
-          {% set current_ids = character.spells | map(attribute='id') | list %}
-          {% for sp in available_spells %}
-            <option value="{{ sp.id }}" {% if sp.id in current_ids %}selected{% endif %}>
-              Lv {{ sp.level }} — {{ sp.name }}
-            </option>
+        
+        {% set spells_by_level = {} %}
+        {% for sp in available_spells %}
+          {% if spells_by_level.update({sp.level: spells_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+        {% endfor %}
+
+        <!-- Tabs -->
+        <div class="flex border-b mb-4 flex-wrap gap-2">
+          {% for level in range(0, 10) %}
+            {% if spells_by_level.get(level) %}
+              <button type="button" class="spell-tab px-3 py-2 font-medium text-sm {% if level == 0 %}bg-blue-600 text-white{% else %}bg-gray-200 hover:bg-gray-300{% endif %}" data-level="{{ level }}">
+                {% if level == 0 %}Cantrips{% else %}Level {{ level }}{% endif %}
+              </button>
+            {% endif %}
           {% endfor %}
-        </select>
+        </div>
+
+        <!-- Tab Content -->
+        {% for level in range(0, 10) %}
+          {% if spells_by_level.get(level) %}
+            <div id="spells-level-{{ level }}" class="spell-content {% if level != 0 %}hidden{% endif %}">
+              <select name="known_spells" multiple size="8" class="w-full border rounded p-2">
+                {% set current_ids = character.spells | map(attribute='id') | list %}
+                {% for sp in spells_by_level[level] | sort(attribute='name') %}
+                  <option value="{{ sp.id }}" {% if sp.id in current_ids %}selected{% endif %}>
+                    {{ sp.name }}
+                  </option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
+        {% endfor %}
       </div>
     </div>
 
@@ -92,6 +116,31 @@
   toggleSpells?.addEventListener('click', () => {
     spellsSection.classList.toggle('hidden');
     arrowIcon.classList.toggle('rotate-180');
+  });
+
+  // Spell tabs
+  const spellTabs = document.querySelectorAll('.spell-tab');
+  spellTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      const level = tab.dataset.level;
+
+      // Hide all contents
+      document.querySelectorAll('.spell-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+
+      // Remove active style from all tabs
+      spellTabs.forEach(t => {
+        t.classList.remove('bg-blue-600', 'text-white');
+        t.classList.add('bg-gray-200');
+      });
+
+      // Show selected content and style tab
+      document.getElementById(`spells-level-${level}`).classList.remove('hidden');
+      tab.classList.remove('bg-gray-200');
+      tab.classList.add('bg-blue-600', 'text-white');
+    });
   });
 </script>
 {% endblock %}

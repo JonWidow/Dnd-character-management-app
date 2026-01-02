@@ -5,6 +5,8 @@ services:
     ports:
       - "5000:5000"
     volumes:
+      - ./app:/app/app
+      - ./scripts:/app/scripts
       - ./instance:/app/instance
       - ./logs:/app/logs
     environment:

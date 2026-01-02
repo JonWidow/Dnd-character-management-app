@@ -1,9 +1,10 @@
 # app.py
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, flash
 from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots
-from app.models.character_struct import CharacterClassFeature, RaceFeature
+from app.models.character_struct import CharacterClassFeature, RaceFeature, SubclassFeature, SubclassModel
 from app.grid import grid_bp
 from app.extensions import socketio
+from sqlalchemy import func
 import os
 
 app = Flask(__name__)
@@ -26,6 +27,41 @@ with app.app_context():
 
 socketio.init_app(app)
 app.register_blueprint(grid_bp)
+
+# ---------- Jinja Filters ----------
+@app.template_filter('parse_proficiencies')
+def parse_proficiencies(items):
+    """
+    Parse proficiencies list, handling both choice-based and regular items.
+    Items starting with "Choose X from:" are separated from regular items.
+    """
+    if not items:
+        return {'regular': [], 'choices': []}
+    
+    regular = []
+    choices = []
+    
+    for item in items:
+        item = item.strip()
+        if item.lower().startswith('choose'):
+            choices.append(item)
+        else:
+            regular.append(item)
+    
+    return {'regular': regular, 'choices': choices}
+
+@app.template_filter('ensure_list')
+def ensure_list(value):
+    """Ensure value is a list, handling strings and lists."""
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        # Try to split by comma or multiple spaces
+        if ',' in value:
+            return [item.strip() for item in value.split(',') if item.strip()]
+        else:
+            return [item.strip() for item in value.split() if item.strip()]
+    return []
 
 # ---------- Helpers ----------
 def ability_mod(score: int) -> int:
@@ -79,7 +115,139 @@ def add_character():
         db.session.add(new_char)
         db.session.commit()
         return redirect(url_for('character_details', char_id=new_char.id))
-    return render_template('add_character.html')
+    
+    # Fetch available character classes and races from database
+    classes = CharacterClassModel.query.order_by(CharacterClassModel.name).all()
+    races = RaceModel.query.order_by(RaceModel.name).all()
+    return render_template('add_character.html', classes=classes, races=races)
+
+@app.route('/admin')
+def admin_index():
+    """Admin dashboard."""
+    stats = {
+        'total_characters': Character.query.count(),
+        'total_classes': CharacterClassModel.query.count(),
+        'total_subclasses': SubclassModel.query.count(),
+        'total_races': RaceModel.query.count(),
+    }
+    return render_template('admin_index.html', stats=stats)
+
+@app.route('/admin/classes', methods=['GET', 'POST'])
+def admin_classes():
+    """Manage character classes and their proficiencies."""
+    if request.method == 'POST':
+        class_id = request.form.get('class_id', type=int)
+        
+        if not class_id:
+            flash('Class ID is required.', 'error')
+            return redirect(url_for('admin_classes'))
+        
+        cls = CharacterClassModel.query.get_or_404(class_id)
+        
+        # Update proficiencies (parse comma-separated values)
+        def parse_list(form_key):
+            raw = request.form.get(form_key, '').strip()
+            return [item.strip() for item in raw.split(',') if item.strip()] if raw else []
+        
+        cls.skill_proficiencies = parse_list('skill_proficiencies')
+        cls.armor_proficiencies = parse_list('armor_proficiencies')
+        cls.weapon_proficiencies = parse_list('weapon_proficiencies')
+        cls.tool_proficiencies = parse_list('tool_proficiencies')
+        cls.saving_throw_proficiencies = parse_list('saving_throw_proficiencies')
+        
+        # Update skill choice count
+        skill_choice = request.form.get('skill_choice_count', type=int)
+        if skill_choice and skill_choice > 0:
+            cls.skill_choice_count = skill_choice
+        else:
+            cls.skill_choice_count = 0
+        
+        # Update other fields
+        hit_die = request.form.get('hit_die', type=int)
+        if hit_die and hit_die > 0:
+            cls.hit_die = hit_die
+        
+        subclass_unlock = request.form.get('subclass_unlock_level', type=int)
+        if subclass_unlock and subclass_unlock > 0:
+            cls.subclass_unlock_level = subclass_unlock
+        
+        spellcasting = request.form.get('spellcasting_ability', '').strip().upper() or None
+        if spellcasting and spellcasting in ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']:
+            cls.spellcasting_ability = spellcasting
+        elif not request.form.get('spellcasting_ability'):
+            cls.spellcasting_ability = None
+        
+        prepares = request.form.get('prepares_spells') == 'on'
+        cls.prepares_spells = prepares
+        
+        description = request.form.get('description', '').strip()
+        if description:
+            cls.description = description
+        
+        db.session.commit()
+        flash(f'Class "{cls.name}" updated successfully.', 'success')
+        return redirect(url_for('admin_classes'))
+    
+    # GET: Show the form
+    classes = CharacterClassModel.query.order_by(CharacterClassModel.name).all()
+    return render_template('admin_classes.html', classes=classes)
+
+@app.route('/admin/subclasses', methods=['GET', 'POST'])
+def admin_subclasses():
+    if request.method == 'POST':
+        class_id = request.form.get('class_id', type=int)
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not class_id or not name:
+            flash('Class and name are required.', 'error')
+            return redirect(url_for('admin_subclasses'))
+        
+        cls = CharacterClassModel.query.get_or_404(class_id)
+        
+        # Check if subclass already exists
+        existing = (SubclassModel.query
+                   .filter(SubclassModel.class_id == class_id)
+                   .filter(func.lower(SubclassModel.name) == name.lower())
+                   .first())
+        
+        if existing:
+            flash(f'Subclass "{name}" already exists for {cls.name}.', 'warning')
+        else:
+            new_sub = SubclassModel(
+                name=name,
+                description=description if description else None,
+                character_class=cls
+            )
+            db.session.add(new_sub)
+            db.session.commit()
+            flash(f'Subclass "{name}" added to {cls.name}.', 'success')
+        
+        return redirect(url_for('admin_subclasses'))
+    
+    # GET: Show the form
+    classes = CharacterClassModel.query.order_by(CharacterClassModel.name).all()
+    subclasses = (SubclassModel.query
+                  .join(CharacterClassModel)
+                  .order_by(CharacterClassModel.name, SubclassModel.name)
+                  .all())
+    
+    return render_template('admin_subclasses.html', classes=classes, subclasses=subclasses)
+
+@app.route('/subclass/<int:subclass_id>')
+def subclass_details(subclass_id: int):
+    """Display subclass details with rendered description."""
+    subclass = SubclassModel.query.get_or_404(subclass_id)
+    return render_template('subclass_details.html', subclass=subclass)
+
+@app.route('/admin/subclasses/<int:subclass_id>/delete', methods=['POST'])
+def delete_subclass(subclass_id: int):
+    subclass = SubclassModel.query.get_or_404(subclass_id)
+    class_name = subclass.character_class.name
+    db.session.delete(subclass)
+    db.session.commit()
+    flash(f'Subclass deleted from {class_name}.', 'success')
+    return redirect(url_for('admin_subclasses'))
 
 @app.route('/characters/<int:char_id>/delete', methods=['POST'])
 def delete_character(char_id: int):
@@ -140,6 +308,18 @@ def character_details(char_id):
                            max_prepared=max_prepared,
                            prepared_spells=char.prepared_spells,
                            feats=feats)
+
+@app.route('/api/classes/<int:class_id>/subclasses')
+def api_class_subclasses(class_id: int):
+    """Get all subclasses for a given class."""
+    cls = CharacterClassModel.query.get_or_404(class_id)
+    subclasses = SubclassModel.query.filter_by(class_id=class_id).order_by(SubclassModel.name).all()
+    return jsonify({
+        'class_id': class_id,
+        'class_name': cls.name,
+        'unlock_level': cls.subclass_unlock_level,
+        'subclasses': [{'id': s.id, 'name': s.name} for s in subclasses]
+    })
 
 @app.route('/api/characters')
 def api_characters():
@@ -205,7 +385,18 @@ def edit_character(char_id: int):
     char = Character.query.get_or_404(char_id)
 
     cls = _class_row_for(char)
-    available_spells = cls.spells if cls else Spell.query.order_by(Spell.level.asc(), Spell.name.asc()).all()
+    
+    # Get max spell level character has slots for
+    max_spell_level = 0
+    for slot in char.spell_slots:
+        if slot.total_slots > 0:
+            max_spell_level = max(max_spell_level, slot.level)
+    
+    # Get class spells, filtered by max spell level character can use
+    if cls:
+        available_spells = [s for s in cls.spells if s.level <= max_spell_level]
+    else:
+        available_spells = Spell.query.filter(Spell.level <= max_spell_level).order_by(Spell.level.asc(), Spell.name.asc()).all()
 
     if request.method == 'POST':
         nm = request.form.get('name')
@@ -216,7 +407,11 @@ def edit_character(char_id: int):
 
         lvl = request.form.get('level', type=int)
         if lvl and lvl >= 1:
+            old_level = char.level
             char.level = lvl
+            # If level changed, sync spell slots
+            if old_level != lvl:
+                char.sync_spell_slots()
 
         for key in ['str_sc','dex_sc','con_sc','int_sc','wis_sc','cha_sc']:
             val = request.form.get(key, type=int)

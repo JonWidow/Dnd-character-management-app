@@ -15,6 +15,15 @@ class CharacterClassModel(db.Model):
     spellcasting_ability = db.Column(db.String(3))
     prepares_spells = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text)
+    subclass_unlock_level = db.Column(db.Integer, default=3)  # Most classes unlock at level 3
+    
+    # Proficiencies stored as JSON lists
+    skill_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["Acrobatics", "Athletics"]
+    skill_choice_count = db.Column(db.Integer, default=0)  # How many skills to choose from the list
+    armor_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["light armor", "medium armor"]
+    weapon_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["simple melee weapons"]
+    tool_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["musical instruments"]
+    saving_throw_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["STR", "CON"]
 
     # IMPORTANT: name must be 'spells' to match Spell.classes back_populates
     spells = db.relationship('Spell', secondary='spell_classes', back_populates='classes')
@@ -42,6 +51,35 @@ class SubclassModel(db.Model):
        db.UniqueConstraint('class_id', 'name', name='uq_subclass_per_class'),
     )
 
+    # Relationship to subclass features
+    features = db.relationship(
+        'SubclassFeature',
+        backref='subclass',
+        lazy='dynamic',
+        cascade='all, delete-orphan'
+    )
+
+
+class SubclassFeature(db.Model):
+    __tablename__ = 'subclass_features'
+    id = db.Column(db.Integer, primary_key=True)
+    # e.g. "Empowered Evocation", "Arcane Recovery"
+    name = db.Column(db.String(80), nullable=False)
+    # Level the feature becomes available
+    level = db.Column(db.Integer, nullable=False)
+    # Full rules text
+    description = db.Column(db.Text)
+    # Uses, recharges etc
+    uses = db.Column(db.String(32))
+    # At higher levels
+    scaling = db.Column(db.JSON, default=dict)
+    # Link to the subclass this feature belongs to
+    subclass_id = db.Column(db.Integer, db.ForeignKey('subclasses.id'), nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint('subclass_id', 'name', 'level', name='uq_feature_per_subclass_level'),
+    )
+    # Lists feature's choices
+    choices = db.Column(db.JSON, default=list)
 
 
 class CharacterClassFeature(db.Model):

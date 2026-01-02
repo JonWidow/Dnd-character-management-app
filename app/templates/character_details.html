@@ -61,6 +61,17 @@
             <tr>
                 <td class="font-semibold text-gray-700">Level:</td>
                 <td>{{ character.level }}</td>
+                <td class="font-semibold text-gray-700">Subclass:</td>
+                <td>
+                    {% if character.subclass %}
+                        <a href="{{ url_for('subclass_details', subclass_id=character.subclass.id) }}"
+                           class="text-blue-600 hover:underline">
+                            {{ character.subclass.name }}
+                        </a>
+                    {% else %}
+                        <span class="text-gray-500 italic">None</span>
+                    {% endif %}
+                </td>
             </tr>
         </table>
 

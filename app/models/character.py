@@ -1,5 +1,6 @@
 from . import db
 from app.models.character_struct import *
+from app.models.spell_slots import ClassSpellSlots, CharacterSpellSlot
 
 character_spells = db.Table(
     'character_spells',
@@ -34,9 +35,11 @@ class Character(db.Model):
     char_class_name = db.Column(db.String(50), nullable=False)
     char_class_id = db.Column( db.Integer, db.ForeignKey("character_classes.id"), nullable=True)
 
-
     race = db.Column(db.String(50), nullable=False)
     level = db.Column(db.Integer, default=1)
+    
+    # Subclass relationship
+    subclass_id = db.Column(db.Integer, db.ForeignKey('subclasses.id'), nullable=True)
 
     str_sc = db.Column(db.Integer, default=10)
     dex_sc = db.Column(db.Integer, default=10)
@@ -50,11 +53,11 @@ class Character(db.Model):
 
     spells = db.relationship('Spell', secondary='character_spells', back_populates='known_by')
 
-    #spell_slots = db.relationship("Character", backref=db.backref("spell_slots", cascade="all, delete-orphan"))
-
     features = db.relationship('CharacterClassFeature', secondary=character_features)
 
     char_class = db.relationship("CharacterClassModel", backref="Characters")
+    
+    subclass = db.relationship("SubclassModel", backref="characters")
 
     def __init__(self, name, char_class, race, ability_scores=None, level=1):
         self.name = name
@@ -159,8 +162,49 @@ class Character(db.Model):
 
         return slots
 
+    def sync_spell_slots(self):
+        """
+        Synchronize character spell slots with their class and current level.
+        Creates or updates CharacterSpellSlot records based on ClassSpellSlots.
+        """
+        if not self.char_class_id or self.level < 1:
+            return
 
-  # --- Level-Up Method ---
+        # Get the spell slot table for this class and level
+        class_slots_row = ClassSpellSlots.query.filter_by(
+            class_id=self.char_class_id,
+            class_level=self.level
+        ).first()
+
+        if not class_slots_row:
+            return
+
+        # Sync spell slots for levels 1-9
+        for spell_level in range(1, 10):
+            max_slots = getattr(class_slots_row, f'slot_{spell_level}', 0)
+
+            # Find or create CharacterSpellSlot for this level
+            char_slot = CharacterSpellSlot.query.filter_by(
+                character_id=self.id,
+                level=spell_level
+            ).first()
+
+            if not char_slot:
+                # Create new slot record
+                char_slot = CharacterSpellSlot(
+                    character_id=self.id,
+                    level=spell_level,
+                    total_slots=max_slots,
+                    remaining_slots=max_slots
+                )
+                db.session.add(char_slot)
+            else:
+                # Update existing slot: preserve used slots, adjust remaining
+                used = char_slot.total_slots - char_slot.remaining_slots
+                char_slot.total_slots = max_slots
+                char_slot.remaining_slots = max(0, max_slots - used)
+
+    # --- Level-Up Method ---
     def level_up(self):
         new_level = self.level + 1
         self.level = new_level
@@ -180,39 +224,11 @@ class Character(db.Model):
             print(f"{self.name} gains an Ability Score Improvement!")
 
         # --- 2. Hit Points Increase ---
-
         self.max_hp = self.calculate_max_hp()
         self.current_hp = self.max_hp
 
         # --- 3. Spellcasting Updates ---
-        cls = self.char_class
-        if cls and (cls.prepares_spells or cls.spellcasting_ability):
-            class_level_entry = ClassLevel.query.filter_by( class_id=cls.id, level=new_level).first()
-
-        if class_level_entry:
-            # Loop through possible spell levels (1-5 for now)
-            for lvl in range(1, 6):
-                slots_attr = f"spell{lvl}"
-                num_slots = getattr(class_level_entry, slots_attr, 0)
-                if num_slots > 0:
-                    # Check if a CharacterSpellSlot exists already
-                    slot = CharacterSpellSlot.query.filter_by(character_id=self.id, level=lvl).first()
-                    if not slot:
-                        slot = CharacterSpellSlot(
-                            character_id=self.id,
-                            level=lvl,
-                            total_slots=num_slots,
-                            remaining_slots=num_slots
-                        )
-                        db.session.add(slot)
-                    else:
-                        # Update total and remaining slots (optional: preserve remaining if some already used)
-                        used = slot.total_slots - slot.remaining_slots
-                        slot.total_slots = num_slots
-                        slot.remaining_slots = max(0, num_slots - used)
-
-            print(f"{self.name}'s spell slots updated.")
-
+        self.sync_spell_slots()
         self.pending_spell_update = True  # UI can prompt for new spells
 
         # --- 4. Derived Stats Update ---
@@ -237,29 +253,4 @@ class Character(db.Model):
         db.session.add(self)
         db.session.commit()
         print(f"{self.name} has successfully leveled up!")
-
-
-    def update_character_spell_slots(character):
-        # Fetch class-level slots
-        class_slots = ClassSpellSlots.query.filter_by(
-            class_id=character.class_id,
-            class_level=character.level
-        ).first()
-
-        # Either create or update existing character spell slots
-        if not character.spell_slots:
-            char_slots = CharacterSpellSlots(character_id=character.id)
-            db.session.add(char_slots)
-        else:
-            char_slots = character.spell_slots[0]  # assuming 1 row per character
-
-        for i in range(1, 10):
-            used_attr = f"slot_{i}_used"
-            # Keep used slots <= max slots
-            char_slots.__setattr__(used_attr, min(
-                getattr(char_slots, used_attr, 0),
-                getattr(class_slots, f"slot_{i}")
-            ))
-
-        db.session.commit()
 

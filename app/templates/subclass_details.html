@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ subclass.name }} - {{ subclass.character_class.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+    <!-- Header -->
+    <div class="mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-4xl font-bold text-blue-800 mb-2">{{ subclass.name }}</h1>
+                <p class="text-lg text-gray-600">
+                    <a href="{{ url_for('show_character_class', class_name=subclass.character_class.name) }}" class="text-blue-600 hover:underline">
+                        {{ subclass.character_class.name }}
+                    </a>
+                </p>
+            </div>
+            <a href="{{ url_for('admin_subclasses') }}" class="text-blue-600 hover:underline">← Back to Admin</a>
+        </div>
+    </div>
+
+    <!-- Description with HTML/Table Support -->
+    <div class="bg-gray-50 rounded-lg p-6 prose prose-sm max-w-none">
+        {% if subclass.description %}
+            <!-- The description field can contain HTML, including tables -->
+            <div class="text-gray-800">
+                {{ subclass.description | safe }}
+            </div>
+        {% else %}
+            <p class="text-gray-500 italic">No description provided.</p>
+        {% endif %}
+    </div>
+
+    <!-- Features Section -->
+    {% if subclass.features %}
+    <div class="mt-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Features</h2>
+        
+        <div class="space-y-4">
+            {% for feature in subclass.features | sort(attribute='level') %}
+            <div class="border border-gray-300 rounded-lg p-4">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            <span class="text-sm font-normal bg-blue-100 text-blue-800 px-2 py-1 rounded">Level {{ feature.level }}</span>
+                            {{ feature.name }}
+                        </h3>
+                        {% if feature.description %}
+                            <p class="text-gray-700 mt-2">{{ feature.description | safe }}</p>
+                        {% endif %}
+                        {% if feature.uses %}
+                            <p class="text-sm text-gray-600 mt-2"><strong>Uses:</strong> {{ feature.uses }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Info Box -->
+    <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p class="text-sm text-gray-700">
+            <strong>Tip:</strong> You can include HTML and tables in the description field by using HTML markup directly.
+        </p>
+    </div>
+</div>
+
+<style>
+    .prose table {
+        border-collapse: collapse;
+        margin: 1.5rem 0;
+        width: 100%;
+    }
+    
+    .prose th {
+        background-color: #ddd6b8;
+        color: #000;
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: bold;
+        border: 1px solid #999;
+    }
+    
+    .prose td {
+        padding: 0.75rem;
+        border: 1px solid #ddd;
+    }
+    
+    .prose tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+</style>
+{% endblock %}

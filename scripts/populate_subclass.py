@@ -1,45 +1,125 @@
-# populate_subclass.py
-from app import app, db  # use the SAME app/db as your web app
-from models.character_struct import CharacterClassModel, SubclassModel
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+import os
+
+# Add parent directory to path so we can import 'app'
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import time
+import requests
+from typing import Dict, Any
+from app import app, db
+from app.models.character_struct import CharacterClassModel, SubclassModel
 from sqlalchemy import func
 
-def fetch_subclasses_for_class(class_name: str) -> list[dict]:
-    """
-    TODO: Replace with real API call.
-    Return [{"name": "...", "description": "..."}, ...]
-    """
-    demo = {
-        "Wizard": [{"name": "Evocation", "description": "Masters of damage magic"}],
-        "Fighter": [{"name": "Champion", "description": "Improved critical"}],
-        "Rogue": [{"name": "Thief", "description": "Fast Hands, Second-Story Work"}],
-    }
-    return demo.get(class_name, [])
+API_ROOT = "https://www.dnd5eapi.co"
+SLEEP = 0.15  # polite rate limit between requests
 
-def upsert_subclasses_for(class_row: CharacterClassModel):
-    subs = fetch_subclasses_for_class(class_row.name)
-    created = updated = 0
-    for s in subs:
-        sname = s["name"].strip()
-        sdesc = s.get("description")
-        existing = SubclassModel.query.filter(func.lower(SubclassModel.name) == sname.lower()).first()
-        if existing:
-            changed = False
-            if existing.class_id != class_row.id:
-                existing.class_id = class_row.id; changed = True
-            if (existing.description or "") != (sdesc or ""):
-                existing.description = sdesc; changed = True
-            if changed:
-                updated += 1
-        else:
-            db.session.add(SubclassModel(name=sname, description=sdesc, character_class=class_row))
+
+def get_json(url: str, retries: int = 3, timeout: int = 12) -> Dict[str, Any] | None:
+    """Fetch JSON from URL with retries."""
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, timeout=timeout)
+            if r.status_code == 200:
+                return r.json()
+            if r.status_code == 404:
+                return None
+            print(f"[HTTP {r.status_code}] {url}")
+        except requests.RequestException as e:
+            print(f"[WARN] Attempt {attempt}/{retries} for {url} failed: {e}")
+        time.sleep(SLEEP * attempt)
+    print(f"[ERROR] Failed to fetch {url}")
+    return None
+
+
+def upsert_subclass(class_row: CharacterClassModel, name: str, description: str | None):
+    """Idempotently create/update a SubclassModel."""
+    existing = (
+        SubclassModel.query
+        .filter(SubclassModel.class_id == class_row.id)
+        .filter(func.lower(SubclassModel.name) == name.lower())
+        .first()
+    )
+    if existing is None:
+        db.session.add(SubclassModel(
+            name=name.strip(),
+            description=description,
+            character_class=class_row
+        ))
+        return True  # created
+    else:
+        # Update if description changed
+        if (existing.description or "") != (description or ""):
+            existing.description = description
+        return False  # updated
+
+
+def fetch_and_seed_subclasses_for(class_row: CharacterClassModel, class_index: str):
+    """Fetch subclasses from D&D 5e API for a given class."""
+    url = f"{API_ROOT}/api/classes/{class_index}/subclasses"
+    data = get_json(url)
+    if not data or "results" not in data:
+        return 0
+    
+    created = 0
+    for sub in data["results"]:
+        sub_name = sub.get("name", "").strip()
+        if not sub_name:
+            continue
+        
+        # Fetch full subclass details for description
+        sub_detail = get_json(f"{API_ROOT}{sub.get('url', '')}")
+        sub_desc = None
+        if sub_detail:
+            # description is usually a list of strings
+            desc_list = sub_detail.get("desc") or []
+            sub_desc = "\n".join(desc_list) if isinstance(desc_list, list) else (desc_list or None)
+        
+        if upsert_subclass(class_row, sub_name, sub_desc):
             created += 1
-    if created or updated:
-        print(f"[OK] {class_row.name}: +{created} / ~{updated}")
+        
+        time.sleep(SLEEP)
+    
+    return created
+
+
+def main():
+    with app.app_context():
+        print("DB:", db.engine.url)
+        
+        # Wipe existing subclasses
+        print("Clearing existing subclasses...")
+        SubclassModel.query.delete()
+        db.session.commit()
+        print("Subclasses cleared.")
+        
+        # Fetch all classes from our database
+        classes = CharacterClassModel.query.order_by(CharacterClassModel.name).all()
+        print(f"Found {len(classes)} classes in database")
+        
+        total = 0
+        for i, cls_row in enumerate(classes, start=1):
+            class_name = cls_row.name
+            class_index = class_name.lower().replace(" ", "-")
+            
+            print(f"({i}/{len(classes)}) {class_name}")
+            created = fetch_and_seed_subclasses_for(cls_row, class_index)
+            
+            if created:
+                print(f"  → +{created} subclasses")
+                total += created
+            else:
+                print(f"  → no subclasses found")
+            
+            db.session.commit()
+            time.sleep(SLEEP)
+        
+        print(f"\n[DONE] Populated {total} subclasses.")
+        print("[NOTE] The D&D 5e API free tier only includes 1 subclass per class.")
+
 
 if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()  # ensure tables exist with the new model
-        for cls in CharacterClassModel.query.all():
-            upsert_subclasses_for(cls)
-        db.session.commit()
-        print("Done.")
+    main()
