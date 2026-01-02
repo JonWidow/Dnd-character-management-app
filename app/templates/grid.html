@@ -280,13 +280,25 @@
             if (data.tokens && data.tokens.length > 0) {
                 const CELL_SIZE = 50;
                 data.tokens.forEach(tok => {
-                    // Check if token already exists locally
-                    const existingToken = gridModule.tokenLayer.children.find(child => child.id === `token-${tok.id}`);
+                    // Check if token already exists locally by server ID
+                    const existingToken = gridModule.tokenLayer.children.find(child => child.serverId === tok.id);
                     if (existingToken) {
+                        // Update position if token exists
+                        const stageX = tok.x * CELL_SIZE + CELL_SIZE / 2;
+                        const stageY = tok.y * CELL_SIZE + CELL_SIZE / 2;
+                        existingToken.x(stageX);
+                        existingToken.y(stageY);
+                        if (existingToken.label) {
+                            existingToken.label.x(stageX);
+                            existingToken.label.y(stageY);
+                        }
                         return; // Skip if already rendered
                     }
                     
                     const token = tokensModule.addToken(gridModule.stage, gridModule.tokenLayer, tok.name, tok.color, tok.character_id);
+                    
+                    // Store server ID on token for future lookups
+                    token.serverId = tok.id;
                     
                     // Convert grid cell coordinates to stage pixel coordinates
                     const stageX = tok.x * CELL_SIZE + CELL_SIZE / 2;
@@ -300,8 +312,6 @@
                         token.label.x(stageX);
                         token.label.y(stageY);
                     }
-                    
-                    token.id = `token-${tok.id}`; // Store server ID on token
                 });
                 gridModule.tokenLayer.draw();
             }
@@ -380,6 +390,19 @@
 
         loadCharacters();
 
+        // Handle server acknowledgment of token spawn
+        socket.on('token_spawned', (data) => {
+            console.log('[CLIENT] Token spawned on server:', data);
+            // Find the locally created token and set its server ID
+            const localToken = gridModule.tokenLayer.children.find(child => 
+                !child.serverId && child.name === data.name
+            );
+            if (localToken) {
+                localToken.serverId = data.token_id;
+                console.log(`[CLIENT] Set server ID ${data.token_id} on local token`);
+            }
+        });
+
         // Add token button handler
         document.getElementById('addTokenBtn').addEventListener('click', () => {
             const name = document.getElementById('tokenName').value || 'Token';
@@ -419,6 +442,26 @@
         // Pass context menu and layer to tokens module
         tokensModule.initContextMenu(gridModule.stage, gridModule.tokenLayer);
         tokensModule.initSocket(socket, GRID_CODE);
+
+        // Handle token movement from other clients
+        socket.on('token_moved', (data) => {
+            console.log('[CLIENT] Token moved:', data);
+            const CELL_SIZE = 50;
+            const token = gridModule.tokenLayer.children.find(child => 
+                child.serverId === data.token_id
+            );
+            if (token) {
+                const stageX = data.x * CELL_SIZE + CELL_SIZE / 2;
+                const stageY = data.y * CELL_SIZE + CELL_SIZE / 2;
+                token.x(stageX);
+                token.y(stageY);
+                if (token.label) {
+                    token.label.x(stageX);
+                    token.label.y(stageY);
+                }
+                gridModule.tokenLayer.draw();
+            }
+        });
 
         // Close context menu on tap/click outside
         const gridContainer = document.getElementById('grid-container');
