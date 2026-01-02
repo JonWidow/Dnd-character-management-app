@@ -280,14 +280,19 @@ def add_character():
         # Calculate initial HP using the class model directly
         if char_class_model:
             con_mod = new_char.sc_to_mod(new_char.con_sc)
-            # Base HP is first level full hit die
             hit_die_val = int(char_class_model.hit_die.replace('d', '')) if 'd' in str(char_class_model.hit_die) else char_class_model.hit_die
-            new_char.max_hp = hit_die_val + con_mod
+            # HP = hit_die (level 1) + (level - 1) * average_hit_die + con_mod * level
+            avg_hit_die = (hit_die_val + 1) // 2  # Average roll (e.g., d8 = 5)
+            new_char.max_hp = hit_die_val + (level - 1) * avg_hit_die + con_mod * level
             new_char.current_hp = new_char.max_hp
-            new_char.sync_spell_slots()
         
         db.session.add(new_char)
         db.session.commit()
+        
+        # Sync spell slots AFTER committing so character exists in DB
+        if char_class_model:
+            new_char.sync_spell_slots()
+            db.session.commit()
         return redirect(url_for('character_details', char_id=new_char.id))
     
     # Fetch available character classes and races from database
