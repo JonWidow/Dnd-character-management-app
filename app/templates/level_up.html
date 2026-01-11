@@ -12,19 +12,39 @@
     </p>
 
     <form method="POST" action="{{ url_for('level_up_character', char_id=character.id) }}">
-        <!-- Ability Score Improvement (ASI) -->
-        {% if asi_options %}
+        <!-- Ability Score Improvement (ASI) / Feat -->
+        {% if asi_options or available_feats %}
             <div class="mb-6 p-4 border rounded bg-gray-50">
                 <h2 class="font-semibold text-gray-700 mb-2">Ability Score Improvement</h2>
-                <p class="text-sm text-gray-600 mb-2">
-                    You can increase your ability scores. Choose one of the following options:
+                <p class="text-sm text-gray-600 mb-3">
+                    You can increase your ability scores or take a feat. Choose one of the following options:
                 </p>
+                
+                <!-- ASI Options -->
                 {% for i, option in enumerate(asi_options, start=1) %}
-                    <label class="block mb-1">
-                        <input type="radio" name="asi_choice" value="{{ i }}" required>
+                    <label class="block mb-2">
+                        <input type="radio" name="asi_choice" value="{{ i }}" class="asi-radio">
                         {{ option.description }}
                     </label>
                 {% endfor %}
+                
+                <!-- Feat Options -->
+                {% if available_feats %}
+                    <hr class="my-3">
+                    <div class="mb-2">
+                        <label class="block mb-2">
+                            <input type="radio" name="asi_choice" value="feat" class="asi-radio">
+                            <span class="font-semibold">Take a Feat:</span>
+                        </label>
+                        <select name="feat_choice" id="feat_choice" class="w-full border rounded p-2 mb-2" disabled>
+                            <option value="">-- Select a Feat --</option>
+                            {% for feat in available_feats %}
+                                <option value="{{ feat.id }}">{{ feat.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <p id="feat_desc" class="text-sm text-gray-600 italic"></p>
+                    </div>
+                {% endif %}
             </div>
         {% endif %}
 
@@ -76,4 +96,41 @@
         </div>
     </form>
 </div>
-{% endblock %}
+
+<script>
+    // Store feat data for display
+    const feats = {
+        {% for feat in available_feats %}
+            {{ feat.id }}: {
+                name: "{{ feat.name }}",
+                description: "{{ feat.description | replace('\n', ' ') | replace('"', '\\"') if feat.description else '' }}"
+            }{{ "," if not loop.last else "" }}
+        {% endfor %}
+    };
+
+    // Handle feat selection
+    const featChoiceSelect = document.getElementById('feat_choice');
+    const featDescDiv = document.getElementById('feat_desc');
+    const asiRadios = document.querySelectorAll('.asi-radio');
+
+    asiRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (radio.value === 'feat') {
+                featChoiceSelect.disabled = false;
+                featChoiceSelect.focus();
+            } else {
+                featChoiceSelect.disabled = true;
+                featDescDiv.textContent = '';
+            }
+        });
+    });
+
+    featChoiceSelect.addEventListener('change', () => {
+        const featId = parseInt(featChoiceSelect.value);
+        if (featId && feats[featId]) {
+            featDescDiv.textContent = feats[featId].description;
+        } else {
+            featDescDiv.textContent = '';
+        }
+    });
+</script>

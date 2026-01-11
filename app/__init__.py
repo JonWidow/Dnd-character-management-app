@@ -520,10 +520,18 @@ def character_details(char_id):
     cls = _class_row_for(char)
     known_spells_count = len(getattr(char, "spells", []) or [])
     max_prepared = 0
-    if cls and cls.prepares_spells:
-        ability = (cls.spellcasting_ability or "").lower()
-        sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
-        max_prepared = max(1, char.level + ability_mod(sc_map.get(ability, 10)))
+    prepared_spells = char.prepared_spells
+    
+    if cls and cls.spellcasting_ability:
+        if cls.prepares_spells:
+            # Classes that prepare spells (Cleric, Druid, Paladin, Wizard)
+            ability = (cls.spellcasting_ability or "").lower()
+            sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
+            max_prepared = max(1, char.level + ability_mod(sc_map.get(ability, 10)))
+        else:
+            # Classes that don't prepare spells (Bard, Sorcerer, Ranger, Warlock, Rogue, etc.)
+            # All known spells are considered "prepared"
+            prepared_spells = char.spells
 
     # Features up to level (works if relationship is lazy='dynamic')
     if cls:
@@ -546,7 +554,7 @@ def character_details(char_id):
                            character=char,
                            known_spells_count=known_spells_count,
                            max_prepared=max_prepared,
-                           prepared_spells=char.prepared_spells,
+                           prepared_spells=prepared_spells,
                            feats=feats)
 
 
@@ -675,6 +683,11 @@ def spell_details(spell_id):
     spell = Spell.query.get_or_404(spell_id)
     return render_template('spell_details.html', spell=spell)
 
+@app.route('/feats/<int:feat_id>')
+def feat_details(feat_id):
+    feat = Feat.query.get_or_404(feat_id)
+    return render_template('feat_details.html', feat=feat)
+
 # Edit character (GET shows form, POST saves and handles known spells)
 @app.route('/characters/<int:char_id>/edit', methods=['GET', 'POST'])
 def edit_character(char_id: int):
@@ -777,12 +790,28 @@ def level_up_character(char_id):
 
         new_features = character.get_new_features_for_level() if hasattr(character, 'get_new_features_for_level') else []
         asi_options = character.get_asi_options() if hasattr(character, 'get_asi_options') else []
+        
+        # Get available feats if character gets ASI at this level
+        available_feats = []
+        new_level = character.level + 1
+        ASI_LEVELS = {
+            "Fighter": [4, 6, 8, 12, 14, 16, 19],
+            "Paladin": [4, 8, 12, 16, 19],
+            "Rogue": [4, 8, 10, 12, 16, 19],
+            "Bard": [4, 8, 12, 16, 19],
+        }
+        
+        if character.char_class and character.char_class.name in ASI_LEVELS:
+            if new_level in ASI_LEVELS[character.char_class.name]:
+                # Character gets ASI/Feat at this level
+                available_feats = Feat.query.all()
 
         return render_template(
             'level_up.html',
             character=character,
             new_features=new_features,
-            asi_options=asi_options
+            asi_options=asi_options,
+            available_feats=available_feats
         )
 
     # --- POST: apply level up ---
@@ -798,6 +827,13 @@ def level_up_character(char_id):
             choice = request.form.get(f'feature_{feature.id}')
             if choice:
                 character.apply_feature_choice(feature, int(choice))  # implement this in your Character model
+
+        # Apply feat choice if any
+        feat_choice = request.form.get('feat_choice')
+        if feat_choice:
+            feat = Feat.query.get(int(feat_choice))
+            if feat and feat not in character.feats:
+                character.feats.append(feat)
 
         # Apply new spells if any
         new_spell_ids = request.form.getlist('new_spells')

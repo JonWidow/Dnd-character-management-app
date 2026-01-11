@@ -7,6 +7,20 @@ spell_classes = db.Table(
     db.Column('class_id', db.Integer, db.ForeignKey('character_classes.id'), primary_key=True),
 )
 
+# Feats <-> Classes (many-to-many)
+feat_classes = db.Table(
+    'feat_classes',
+    db.Column('feat_id', db.Integer, db.ForeignKey('feat.id'), primary_key=True),
+    db.Column('class_id', db.Integer, db.ForeignKey('character_classes.id'), primary_key=True),
+)
+
+# Feats <-> Characters (many-to-many)
+character_feats = db.Table(
+    'character_feats',
+    db.Column('character_id', db.Integer, db.ForeignKey('character.id'), primary_key=True),
+    db.Column('feat_id', db.Integer, db.ForeignKey('feat.id'), primary_key=True),
+)
+
 class CharacterClassModel(db.Model):
     __tablename__ = 'character_classes'
     id = db.Column(db.Integer, primary_key=True)
@@ -111,6 +125,24 @@ class CharacterClassFeature(db.Model):
     # Optional metadata you may want later:
              # e.g. "PB/day", "1/short rest"
     # 
+
+
+class Feat(db.Model):
+    __tablename__ = 'feat'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(128), unique=True, nullable=False)
+    description = db.Column(db.Text)
+    prerequisites = db.Column(db.JSON, default=list)  # e.g., [{"ability_score": "STR", "minimum_score": 13}]
+    
+    # Relationships
+    # Classes that can take this feat
+    classes = db.relationship('CharacterClassModel', secondary='feat_classes', backref='available_feats')
+    
+    # Characters that have taken this feat
+    known_by = db.relationship('Character', secondary='character_feats', backref='feats')
+    
+    def __repr__(self):
+        return f"<Feat {self.name}>"
 
 
 class RaceModel(db.Model):
