@@ -12,7 +12,7 @@ class Encounter(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    participants = db.relationship('CombatParticipant', cascade='all, delete-orphan', lazy=True)
+    participants = db.relationship('CombatParticipant', cascade='all, delete-orphan', lazy=True, back_populates='encounter')
     
     def to_dict(self):
         return {
@@ -38,7 +38,7 @@ class CombatParticipant(db.Model):
     
     # Relationships
     character = db.relationship('Character', backref='tokens')
-    encounter = db.relationship('Encounter', backref='encounter_ref')
+    encounter = db.relationship('Encounter', back_populates='participants')
     
     def to_dict(self):
         return {
