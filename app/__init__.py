@@ -1,7 +1,7 @@
 # app.py
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User
+from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User, Feat
 from app.models.character_struct import CharacterClassFeature, RaceFeature, SubclassFeature, SubclassModel
 from app.models.spell_slots import CharacterSpellSlot
 from app.grid import grid_bp
@@ -662,9 +662,9 @@ def feature_details(feature_id: int):
     }
     return render_template('feature_details.html', feature=ctx)
 
-@app.route('/spells')
-def spells_page():
-    return render_template('spells.html')
+@app.route('/search')
+def search_page():
+    return render_template('search.html')
 
 @app.route('/api/spells')
 def get_spells():
@@ -677,6 +677,82 @@ def get_spells():
         {"id": s.id, "name": s.name, "level": s.level, "school": s.school, "casting_time": s.casting_time}
         for s in spells
     ])
+
+@app.route('/api/search')
+def global_search():
+    """Global search across spells, classes, subclasses, races, feats, and features."""
+    query = request.args.get('q', '').strip()
+    filters = request.args.getlist('filter')  # e.g., ['spells', 'classes', 'feats']
+    
+    if not query:
+        return jsonify({"spells": [], "classes": [], "subclasses": [], "races": [], "feats": [], "features": []})
+    
+    results = {}
+    
+    # Search Spells
+    if not filters or 'spells' in filters:
+        spells = Spell.query.filter(Spell.name.ilike(f'%{query}%')).limit(10).all()
+        results['spells'] = [
+            {"id": s.id, "name": s.name, "type": "spell", "detail": f"Level {s.level} {s.school}"}
+            for s in spells
+        ]
+    
+    # Search Classes
+    if not filters or 'classes' in filters:
+        classes = CharacterClassModel.query.filter(CharacterClassModel.name.ilike(f'%{query}%')).limit(10).all()
+        results['classes'] = [
+            {"id": c.id, "name": c.name, "type": "class", "detail": f"Hit Die: d{c.hit_die}"}
+            for c in classes
+        ]
+    
+    # Search Subclasses
+    if not filters or 'subclasses' in filters:
+        subclasses = SubclassModel.query.filter(SubclassModel.name.ilike(f'%{query}%')).limit(10).all()
+        results['subclasses'] = [
+            {"id": s.id, "name": s.name, "type": "subclass", "detail": s.character_class.name if s.character_class else ""}
+            for s in subclasses
+        ]
+    
+    # Search Races
+    if not filters or 'races' in filters:
+        races = RaceModel.query.filter(RaceModel.name.ilike(f'%{query}%')).limit(10).all()
+        results['races'] = [
+            {"id": r.id, "name": r.name, "type": "race", "detail": f"Speed: {r.speed} ft."}
+            for r in races
+        ]
+    
+    # Search Feats
+    if not filters or 'feats' in filters:
+        feats = Feat.query.filter(Feat.name.ilike(f'%{query}%')).limit(10).all()
+        results['feats'] = [
+            {"id": f.id, "name": f.name, "type": "feat", "detail": "Prerequisites: " + ", ".join([p.get("ability_score", {}).get("name", "Unknown") for p in f.prerequisites]) if f.prerequisites else "No prerequisites"}
+            for f in feats
+        ]
+    
+    # Search Features (Class & Subclass)
+    if not filters or 'features' in filters:
+        class_features = CharacterClassFeature.query.filter(CharacterClassFeature.name.ilike(f'%{query}%')).limit(5).all()
+        subclass_features = SubclassFeature.query.filter(SubclassFeature.name.ilike(f'%{query}%')).limit(5).all()
+        
+        features = []
+        for cf in class_features:
+            features.append({
+                "id": cf.id, 
+                "name": cf.name, 
+                "type": "class_feature", 
+                "detail": f"{cf.character_class.name} - Level {cf.level}" if cf.character_class else f"Level {cf.level}"
+            })
+        for sf in subclass_features:
+            features.append({
+                "id": sf.id, 
+                "name": sf.name, 
+                "type": "subclass_feature", 
+                "detail": f"{sf.subclass.name} - Level {sf.level}" if sf.subclass else f"Level {sf.level}"
+            })
+        
+        results['features'] = features
+    
+    return jsonify(results)
 
 @app.route('/spells/<int:spell_id>')
 def spell_details(spell_id):
