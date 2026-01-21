@@ -35,31 +35,31 @@ stage.add(tokenLayer);
 export function drawDebugGrid() {
     gridLayer.destroyChildren(); // clear previous
 
-    // background
+    // background - warm charcoal stone
     gridLayer.add(new Konva.Rect({
         x: 0,
         y: 0,
         width: GRID_WIDTH * CELL_SIZE,
         height: GRID_HEIGHT * CELL_SIZE,
-        fill: "#bbbbbb"
+        fill: "#3d3d3d"
     }));
 
-    // vertical lines
+    // vertical lines - complementary bronze/copper accent
     for (let i = 0; i <= GRID_WIDTH; i++) {
         let x = i * CELL_SIZE;
         gridLayer.add(new Konva.Line({
             points: [x, 0, x, GRID_HEIGHT * CELL_SIZE],
-            stroke: "black",
+            stroke: "#b8860b",
             strokeWidth: 2
         }));
     }
 
-    // horizontal lines
+    // horizontal lines - complementary bronze/copper accent
     for (let j = 0; j <= GRID_HEIGHT; j++) {
         let y = j * CELL_SIZE;
         gridLayer.add(new Konva.Line({
             points: [0, y, GRID_WIDTH * CELL_SIZE, y],
-            stroke: "black",
+            stroke: "#b8860b",
             strokeWidth: 2
         }));
     }
