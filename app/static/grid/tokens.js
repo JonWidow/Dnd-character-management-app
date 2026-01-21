@@ -175,13 +175,13 @@ async function showCharacterStats(characterId, x, y) {
                     const borderColor = isUsed ? '#dc2626' : '#2563eb';
                     const hoverBg = isUsed ? '#ef4444' : '#3b82f6';
                     slotBoxes += `<button type="button" 
-                        style="width: 20px; height: 20px; margin: 1px; background-color: ${bgColor}; border: 2px solid ${borderColor}; border-radius: 3px; font-size: 10px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0; font-weight: bold; transition: all 0.2s; font-family: Arial, sans-serif;"
+                        style="width: 20px !important; height: 20px !important; margin: 1px; background-color: ${bgColor} !important; background: ${bgColor} !important; border: 2px solid ${borderColor} !important; border-radius: 3px; font-size: 10px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0 !important; font-weight: bold; transition: all 0.2s; font-family: Arial, sans-serif; box-shadow: none !important;"
                         data-slot-id="${slot.id}"
                         data-slot-index="${i}"
                         data-character-id="${characterId}"
                         class="spell-slot-btn"
-                        onmouseover="this.style.backgroundColor='${hoverBg}'; this.style.transform='scale(1.1)';"
-                        onmouseout="this.style.backgroundColor='${bgColor}'; this.style.transform='scale(1)';"
+                        onmouseover="this.style.backgroundColor='${hoverBg} !important'; this.style.transform='scale(1.1)';"
+                        onmouseout="this.style.backgroundColor='${bgColor} !important'; this.style.transform='scale(1)';"
                         onclick="toggleSpellSlot(event, ${characterId}, ${slot.id}, ${i})">${i}</button>`;
                 }
                 slotsHTML += `<div style="font-size: 12px; min-width: 0;">
