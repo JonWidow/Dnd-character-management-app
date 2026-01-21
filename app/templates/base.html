@@ -7,11 +7,110 @@
 
     <!-- TailwindCSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         body {
             background-color: #f8f9fa;
         }
+        
+        /* Sidebar styles */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 260px;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+            z-index: 40;
+            padding-top: 80px;
+            transform: translateX(0);
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-toggle {
+            display: block;
+        }
+
+        /* Mobile: narrower sidebar */
+        @media (max-width: 767px) {
+            .sidebar {
+                width: 200px;
+                transform: translateX(-100%);
+            }
+            .sidebar:not(.hidden) {
+                transform: translateX(0);
+            }
+            .sidebar.hidden {
+                transform: translateX(-100%);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        /* Desktop: always show sidebar, wider */
+        @media (min-width: 768px) {
+            .sidebar {
+                width: 260px;
+                transform: translateX(0) !important;
+            }
+            .sidebar.hidden {
+                transform: translateX(0) !important;
+            }
+            .main-content {
+                margin-left: 260px;
+            }
+        }
+
+        .main-content {
+            transition: margin-left 0.3s ease;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            text-white;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+            font-size: 0.95rem;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left-color: #fff;
+        }
+
+        .nav-item.active {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-left-color: #fbbf24;
+            font-weight: 600;
+        }
+
+        .nav-item i {
+            width: 24px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .nav-section-title {
+            padding: 16px 20px 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.05em;
+        }
+
         /* Ensure badge colors are available */
         .bg-amber-100 { background-color: #FEF3C7; }
         .text-amber-800 { color: #92400E; }
@@ -29,58 +128,142 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
-    <!-- Header -->
-    <header class="sticky top-0 z-50 bg-blue-800 text-white p-4 shadow-md">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-xl font-bold">D&D Character Manager</h1>
-            <nav class="space-x-4 flex items-center">
-                <a href="{{ url_for('home') }}" class="text-white hover:underline">Home</a>
-                {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('characters') }}" class="text-white hover:underline">Characters</a>
-                    <a href="{{ url_for('user_profile') }}" class="text-white hover:underline">Profile</a>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <nav class="py-4">
+            {% if current_user.is_authenticated %}
+                <div class="nav-section-title">Main</div>
+                <a href="{{ url_for('home') }}" class="nav-item {% if request.endpoint == 'home' %}active{% endif %}">
+                    <i class="fas fa-home"></i>
+                    <span>Home</span>
+                </a>
+                <a href="{{ url_for('characters') }}" class="nav-item {% if request.endpoint == 'characters' %}active{% endif %}">
+                    <i class="fas fa-users"></i>
+                    <span>Characters</span>
+                </a>
+                <a href="{{ url_for('spells_page') }}" class="nav-item {% if request.endpoint == 'spells_page' %}active{% endif %}">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    <span>Search</span>
+                </a>
+                <a href="{{ url_for('user_profile') }}" class="nav-item {% if request.endpoint == 'user_profile' %}active{% endif %}">
+                    <i class="fas fa-user"></i>
+                    <span>Profile</span>
+                </a>
+
                 {% if current_user.is_admin %}
-                        <div class="relative">
-                            <button id="adminBtn" class="text-white hover:underline">Admin ▼</button>
-                            <div id="adminMenu" class="absolute hidden bg-blue-900 rounded shadow-lg mt-2 w-48 right-0 z-50">
-                                <a href="{{ url_for('admin_index') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Dashboard</a>
-                                <a href="{{ url_for('admin_users') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Users</a>
-                                <a href="{{ url_for('admin_classes') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Classes</a>
-                                <a href="{{ url_for('admin_subclasses') }}" class="block px-4 py-2 text-white hover:bg-blue-700">Subclasses</a>
-                            </div>
-                        </div>
-                        <script>
-                            const adminBtn = document.getElementById('adminBtn');
-                            const adminMenu = document.getElementById('adminMenu');
-                            adminBtn.addEventListener('click', () => {
-                                adminMenu.classList.toggle('hidden');
-                            });
-                            document.addEventListener('click', (e) => {
-                                if (!adminBtn.contains(e.target) && !adminMenu.contains(e.target)) {
-                                    adminMenu.classList.add('hidden');
-                                }
-                            });
-                        </script>
-                    {% endif %}
-                    <span class="text-white">{{ current_user.username }}</span>
-                    <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">
-                        <button type="submit" class="text-white hover:underline">Logout</button>
-                    </form>
-                {% else %}
-                    <a href="{{ url_for('login') }}" class="text-white hover:underline">Login</a>
-                    <a href="{{ url_for('register') }}" class="text-white hover:underline">Register</a>
+                    <div class="nav-section-title mt-4">Administration</div>
+                    <a href="{{ url_for('admin_index') }}" class="nav-item {% if request.endpoint == 'admin_index' %}active{% endif %}">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{{ url_for('admin_users') }}" class="nav-item {% if request.endpoint == 'admin_users' %}active{% endif %}">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Users</span>
+                    </a>
+                    <a href="{{ url_for('admin_classes') }}" class="nav-item {% if request.endpoint == 'admin_classes' %}active{% endif %}">
+                        <i class="fas fa-book"></i>
+                        <span>Classes</span>
+                    </a>
+                    <a href="{{ url_for('admin_subclasses') }}" class="nav-item {% if request.endpoint == 'admin_subclasses' %}active{% endif %}">
+                        <i class="fas fa-scroll"></i>
+                        <span>Subclasses</span>
+                    </a>
                 {% endif %}
-            </nav>
+            {% else %}
+                <div class="nav-section-title">Access</div>
+                <a href="{{ url_for('login') }}" class="nav-item {% if request.endpoint == 'login' %}active{% endif %}">
+                    <i class="fas fa-sign-in-alt"></i>
+                    <span>Login</span>
+                </a>
+                <a href="{{ url_for('register') }}" class="nav-item {% if request.endpoint == 'register' %}active{% endif %}">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Register</span>
+                </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div class="flex justify-between items-center p-4">
+            <div class="flex items-center gap-2">
+                <button id="sidebarToggle" class="sidebar-toggle p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h1 class="text-2xl font-bold text-gray-800 hidden sm:block">
+                    <i class="fas fa-dice-d20 text-blue-600 mr-2"></i>D&D Manager
+                </h1>
+            </div>
+            
+            {% if current_user.is_authenticated %}
+                <div class="flex items-center gap-4">
+                    <div class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg">
+                        <i class="fas fa-user-circle text-gray-600"></i>
+                        <span class="text-gray-700 font-medium">{{ current_user.username }}</span>
+                    </div>
+                    <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">
+                        <button type="submit" class="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition">
+                            <i class="fas fa-sign-out-alt text-xl"></i>
+                        </button>
+                    </form>
+                </div>
+            {% endif %}
         </div>
     </header>
 
     <!-- Main content -->
-    <main class="flex-1 container mx-auto p-4">
+    <main class="main-content flex-1 p-6">
         {% block content %}{% endblock %}
     </main>
 
     <!-- Footer -->
-    <footer class="bg-gray-200 text-gray-700 p-4 mt-4 text-center">
+    <footer class="main-content bg-gray-200 text-gray-700 p-4 text-center text-sm">
         JonWidow D&D app
     </footer>
+
+    <script>
+        // Sidebar toggle for both mobile and desktop
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        // Load sidebar state from localStorage
+        const sidebarHidden = localStorage.getItem('sidebarHidden') === 'true';
+        if (sidebarHidden && window.innerWidth >= 768) {
+            sidebar.classList.add('hidden');
+        }
+
+        sidebarToggle?.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            // Save preference to localStorage
+            const isHidden = sidebar.classList.contains('hidden');
+            localStorage.setItem('sidebarHidden', isHidden);
+        });
+
+        // Close sidebar when clicking a link on mobile only
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth < 768) {
+                    sidebar.classList.add('hidden');
+                }
+            });
+        });
+
+        // Close sidebar when clicking outside on mobile only
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth < 768 && 
+                !sidebar.contains(e.target) && 
+                !sidebarToggle.contains(e.target)) {
+                sidebar.classList.add('hidden');
+            }
+        });
+
+        // Reset sidebar to visible on resize to desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.remove('hidden');
+            }
+        });
+    </script>
 </body>
 </html>
