@@ -165,36 +165,43 @@ async function showCharacterStats(characterId, x, y) {
         // Display spell slots with visual indicators
         const spellSlotsContainer = document.getElementById('spellSlotsContainer');
         if (character.spell_slots && character.spell_slots.length > 0) {
-            let slotsHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">';
+            let slotsHTML = '<div style="border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">';
             character.spell_slots.forEach(slot => {
-                // Create visual slot boxes like character details
+                // Create visual slot boxes like character details - blue background when available, red when used
                 let slotBoxes = '';
                 for (let i = 1; i <= slot.total_slots; i++) {
                     const isUsed = i <= slot.used ? true : false;
-                    const bgColor = isUsed ? '#ef4444' : '#3b82f6';  // red if used, blue if available
-                    const borderColor = isUsed ? '#dc2626' : '#1d4ed8';
+                    const bgColor = isUsed ? '#f87171' : '#60a5fa';  // brighter red if used, brighter blue if available
+                    const borderColor = isUsed ? '#dc2626' : '#2563eb';
+                    const hoverBg = isUsed ? '#ef4444' : '#3b82f6';
                     slotBoxes += `<button type="button" 
-                        style="width: 18px; height: 18px; margin: 1px; background-color: ${bgColor}; border: 1px solid ${borderColor}; border-radius: 2px; font-size: 9px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0; font-weight: bold; transition: all 0.2s;"
+                        style="width: 20px; height: 20px; margin: 1px; background-color: ${bgColor}; border: 2px solid ${borderColor}; border-radius: 3px; font-size: 10px; line-height: 16px; text-align: center; color: white; cursor: pointer; padding: 0; font-weight: bold; transition: all 0.2s; font-family: Arial, sans-serif;"
                         data-slot-id="${slot.id}"
                         data-slot-index="${i}"
                         data-character-id="${characterId}"
                         class="spell-slot-btn"
+                        onmouseover="this.style.backgroundColor='${hoverBg}'; this.style.transform='scale(1.1)';"
+                        onmouseout="this.style.backgroundColor='${bgColor}'; this.style.transform='scale(1)';"
                         onclick="toggleSpellSlot(event, ${characterId}, ${slot.id}, ${i})">${i}</button>`;
                 }
-                slotsHTML += `<div style="font-size: 11px; min-width: 0;">
-                    <div style="font-weight: bold; margin-bottom: 2px;">Lvl ${slot.level}</div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 1px;">${slotBoxes}</div>
+                slotsHTML += `<div style="font-size: 12px; min-width: 0;">
+                    <div style="font-weight: 600; margin-bottom: 4px; color: #374151; font-size: 11px;">Level ${slot.level}</div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; background: #f9fafb; border-radius: 3px;">${slotBoxes}</div>
                 </div>`;
             });
             slotsHTML += '</div>';
             spellSlotsContainer.innerHTML = slotsHTML;
         } else {
-            spellSlotsContainer.innerHTML = '<div style="border-top: 1px solid #eee; padding-top: 6px; margin-top: 6px; color: #999; font-size: 12px;">No spell slots</div>';
+            spellSlotsContainer.innerHTML = '<div style="border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 8px; color: #999; font-size: 12px;">No spell slots</div>';
         }
         
         // Position panel to the right of the context menu with viewport bounds checking
+        // Show panel first to get accurate height
+        statsPanel.style.display = 'block';
         const panelWidth = 320;
-        const panelHeight = Math.min(window.innerHeight * 0.85, 500); // Approximate max height
+        // Get actual panel height after rendering
+        const actualPanelHeight = statsPanel.offsetHeight;
+        const panelHeight = Math.min(actualPanelHeight, window.innerHeight * 0.85);
         let finalX = x;
         let finalY = y;
         
@@ -216,7 +223,6 @@ async function showCharacterStats(characterId, x, y) {
         
         statsPanel.style.left = finalX + 'px';
         statsPanel.style.top = finalY + 'px';
-        statsPanel.style.display = 'block';
     } catch (err) {
         console.error('Failed to fetch character stats:', err);
     }
