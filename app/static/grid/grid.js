@@ -76,7 +76,7 @@ window.addEventListener("resize", () => {
 
 // ----- ZOOM CONFIGURATION -----
 const ZOOM_CONFIG = {
-    minScale: 0.5,
+    minScale: 0.3,
     maxScale: 3,
     zoomSpeed: 0.1
 };
