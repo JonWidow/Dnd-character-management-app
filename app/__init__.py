@@ -1,7 +1,7 @@
 # app.py
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User
+from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User, Feat
 from app.models.character_struct import CharacterClassFeature, RaceFeature, SubclassFeature, SubclassModel
 from app.models.spell_slots import CharacterSpellSlot
 from app.grid import grid_bp
@@ -160,7 +160,7 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         
-        user = User.query.filter_by(username=username).first()
+        user = User.get_by_username(username)
         
         if user and user.check_password(password):
             from datetime import datetime
@@ -249,15 +249,50 @@ def add_character():
             int(request.form['cha_sc'])
         ]
 
+        # Look up the class by name
+        class_name = request.form['char_class'].strip()
+        char_class_model = CharacterClassModel.query.filter(
+            db.func.lower(CharacterClassModel.name) == db.func.lower(class_name)
+        ).first()
+
+        # Create character
         new_char = Character(
             name=request.form['name'].strip(),
-            char_class=request.form['char_class'].strip(),
+            char_class=class_name,
             race=request.form['race'].strip(),
             ability_scores=ability_scores,
             level=level
         )
+        
+        # Link to the class model if found
+        if char_class_model:
+            new_char.char_class_id = char_class_model.id
+        
+        # Handle subclass if provided
+        subclass_id = request.form.get('subclass_id', type=int)
+        if subclass_id:
+            new_char.subclass_id = subclass_id
+        
+        # Assign to current user
+        if current_user.is_authenticated:
+            new_char.user_id = current_user.id
+        
+        # Calculate initial HP using the class model directly
+        if char_class_model:
+            con_mod = new_char.sc_to_mod(new_char.con_sc)
+            hit_die_val = int(char_class_model.hit_die.replace('d', '')) if 'd' in str(char_class_model.hit_die) else char_class_model.hit_die
+            # HP = hit_die (level 1) + (level - 1) * average_hit_die + con_mod * level
+            avg_hit_die = (hit_die_val + 1) // 2  # Average roll (e.g., d8 = 5)
+            new_char.max_hp = hit_die_val + (level - 1) * avg_hit_die + con_mod * level
+            new_char.current_hp = new_char.max_hp
+        
         db.session.add(new_char)
         db.session.commit()
+        
+        # Sync spell slots AFTER committing so character exists in DB
+        if char_class_model:
+            new_char.sync_spell_slots()
+            db.session.commit()
         return redirect(url_for('character_details', char_id=new_char.id))
     
     # Fetch available character classes and races from database
@@ -485,10 +520,18 @@ def character_details(char_id):
     cls = _class_row_for(char)
     known_spells_count = len(getattr(char, "spells", []) or [])
     max_prepared = 0
-    if cls and cls.prepares_spells:
-        ability = (cls.spellcasting_ability or "").lower()
-        sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
-        max_prepared = max(1, char.level + ability_mod(sc_map.get(ability, 10)))
+    prepared_spells = char.prepared_spells
+    
+    if cls and cls.spellcasting_ability:
+        if cls.prepares_spells:
+            # Classes that prepare spells (Cleric, Druid, Paladin, Wizard)
+            ability = (cls.spellcasting_ability or "").lower()
+            sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
+            max_prepared = max(1, char.level + ability_mod(sc_map.get(ability, 10)))
+        else:
+            # Classes that don't prepare spells (Bard, Sorcerer, Ranger, Warlock, Rogue, etc.)
+            # All known spells are considered "prepared"
+            prepared_spells = char.spells
 
     # Features up to level (works if relationship is lazy='dynamic')
     if cls:
@@ -511,7 +554,7 @@ def character_details(char_id):
                            character=char,
                            known_spells_count=known_spells_count,
                            max_prepared=max_prepared,
-                           prepared_spells=char.prepared_spells,
+                           prepared_spells=prepared_spells,
                            feats=feats)
 
 
@@ -619,9 +662,9 @@ def feature_details(feature_id: int):
     }
     return render_template('feature_details.html', feature=ctx)
 
-@app.route('/spells')
-def spells_page():
-    return render_template('spells.html')
+@app.route('/search')
+def search_page():
+    return render_template('search.html')
 
 @app.route('/api/spells')
 def get_spells():
@@ -635,10 +678,91 @@ def get_spells():
         for s in spells
     ])
 
+@app.route('/api/search')
+def global_search():
+    """Global search across spells, classes, subclasses, races, feats, and features."""
+    query = request.args.get('q', '').strip()
+    filters = request.args.getlist('filter')  # e.g., ['spells', 'classes', 'feats']
+    
+    if not query:
+        return jsonify({"spells": [], "classes": [], "subclasses": [], "races": [], "feats": [], "features": []})
+    
+    results = {}
+    
+    # Search Spells
+    if not filters or 'spells' in filters:
+        spells = Spell.query.filter(Spell.name.ilike(f'%{query}%')).limit(10).all()
+        results['spells'] = [
+            {"id": s.id, "name": s.name, "type": "spell", "detail": f"Level {s.level} {s.school}"}
+            for s in spells
+        ]
+    
+    # Search Classes
+    if not filters or 'classes' in filters:
+        classes = CharacterClassModel.query.filter(CharacterClassModel.name.ilike(f'%{query}%')).limit(10).all()
+        results['classes'] = [
+            {"id": c.id, "name": c.name, "type": "class", "detail": f"Hit Die: d{c.hit_die}"}
+            for c in classes
+        ]
+    
+    # Search Subclasses
+    if not filters or 'subclasses' in filters:
+        subclasses = SubclassModel.query.filter(SubclassModel.name.ilike(f'%{query}%')).limit(10).all()
+        results['subclasses'] = [
+            {"id": s.id, "name": s.name, "type": "subclass", "detail": s.character_class.name if s.character_class else ""}
+            for s in subclasses
+        ]
+    
+    # Search Races
+    if not filters or 'races' in filters:
+        races = RaceModel.query.filter(RaceModel.name.ilike(f'%{query}%')).limit(10).all()
+        results['races'] = [
+            {"id": r.id, "name": r.name, "type": "race", "detail": f"Speed: {r.speed} ft."}
+            for r in races
+        ]
+    
+    # Search Feats
+    if not filters or 'feats' in filters:
+        feats = Feat.query.filter(Feat.name.ilike(f'%{query}%')).limit(10).all()
+        results['feats'] = [
+            {"id": f.id, "name": f.name, "type": "feat", "detail": "Prerequisites: " + ", ".join([p.get("ability_score", {}).get("name", "Unknown") for p in f.prerequisites]) if f.prerequisites else "No prerequisites"}
+            for f in feats
+        ]
+    
+    # Search Features (Class & Subclass)
+    if not filters or 'features' in filters:
+        class_features = CharacterClassFeature.query.filter(CharacterClassFeature.name.ilike(f'%{query}%')).limit(5).all()
+        subclass_features = SubclassFeature.query.filter(SubclassFeature.name.ilike(f'%{query}%')).limit(5).all()
+        
+        features = []
+        for cf in class_features:
+            features.append({
+                "id": cf.id, 
+                "name": cf.name, 
+                "type": "class_feature", 
+                "detail": f"{cf.character_class.name} - Level {cf.level}" if cf.character_class else f"Level {cf.level}"
+            })
+        for sf in subclass_features:
+            features.append({
+                "id": sf.id, 
+                "name": sf.name, 
+                "type": "subclass_feature", 
+                "detail": f"{sf.subclass.name} - Level {sf.level}" if sf.subclass else f"Level {sf.level}"
+            })
+        
+        results['features'] = features
+    
+    return jsonify(results)
+
 @app.route('/spells/<int:spell_id>')
 def spell_details(spell_id):
     spell = Spell.query.get_or_404(spell_id)
     return render_template('spell_details.html', spell=spell)
+
+@app.route('/feats/<int:feat_id>')
+def feat_details(feat_id):
+    feat = Feat.query.get_or_404(feat_id)
+    return render_template('feat_details.html', feat=feat)
 
 # Edit character (GET shows form, POST saves and handles known spells)
 @app.route('/characters/<int:char_id>/edit', methods=['GET', 'POST'])
@@ -646,18 +770,6 @@ def edit_character(char_id: int):
     char = Character.query.get_or_404(char_id)
 
     cls = _class_row_for(char)
-    
-    # Get max spell level character has slots for
-    max_spell_level = 0
-    for slot in char.spell_slots:
-        if slot.total_slots > 0:
-            max_spell_level = max(max_spell_level, slot.level)
-    
-    # Get class spells, filtered by max spell level character can use
-    if cls:
-        available_spells = [s for s in cls.spells if s.level <= max_spell_level]
-    else:
-        available_spells = Spell.query.filter(Spell.level <= max_spell_level).order_by(Spell.level.asc(), Spell.name.asc()).all()
 
     if request.method == 'POST':
         nm = request.form.get('name')
@@ -670,9 +782,19 @@ def edit_character(char_id: int):
         if lvl and lvl >= 1:
             old_level = char.level
             char.level = lvl
-            # If level changed, sync spell slots
+            # If level changed, sync spell slots FIRST before calculating available spells
             if old_level != lvl:
                 char.sync_spell_slots()
+                # Recalculate HP based on new level
+                if char.char_class:
+                    con_mod = char.sc_to_mod(char.con_sc)
+                    hit_die_val = int(char.char_class.hit_die.replace('d', '')) if 'd' in str(char.char_class.hit_die) else char.char_class.hit_die
+                    # HP = hit_die + (level - 1) * (hit_die / 2 or average) + con_mod * level
+                    # Simplified: HP increases by average hit die per level (rounded up)
+                    # For now, recalculate total HP as: first level gets full hit die, subsequent levels get hit_die/2 average
+                    avg_hit_die = (hit_die_val + 1) // 2  # Average roll (e.g., d8 = 5)
+                    char.max_hp = hit_die_val + (lvl - 1) * avg_hit_die + con_mod * lvl
+                    char.current_hp = char.max_hp
 
         # Handle notes
         notes = request.form.get('notes', '')
@@ -712,6 +834,19 @@ def edit_character(char_id: int):
         flash('Character updated.', 'success')
         return redirect(url_for('character_details', char_id=char.id))
 
+    # After handling POST (if any), calculate available spells based on current character state
+    # Get max spell level character has slots for
+    max_spell_level = 0
+    for slot in char.spell_slots:
+        if slot.total_slots > 0:
+            max_spell_level = max(max_spell_level, slot.level)
+    
+    # Get class spells, filtered by max spell level character can use
+    if cls:
+        available_spells = [s for s in cls.spells if s.level <= max_spell_level]
+    else:
+        available_spells = Spell.query.filter(Spell.level <= max_spell_level).order_by(Spell.level.asc(), Spell.name.asc()).all()
+
     return render_template('edit_character.html',
                            character=char,
                            available_spells=available_spells)
@@ -731,12 +866,28 @@ def level_up_character(char_id):
 
         new_features = character.get_new_features_for_level() if hasattr(character, 'get_new_features_for_level') else []
         asi_options = character.get_asi_options() if hasattr(character, 'get_asi_options') else []
+        
+        # Get available feats if character gets ASI at this level
+        available_feats = []
+        new_level = character.level + 1
+        ASI_LEVELS = {
+            "Fighter": [4, 6, 8, 12, 14, 16, 19],
+            "Paladin": [4, 8, 12, 16, 19],
+            "Rogue": [4, 8, 10, 12, 16, 19],
+            "Bard": [4, 8, 12, 16, 19],
+        }
+        
+        if character.char_class and character.char_class.name in ASI_LEVELS:
+            if new_level in ASI_LEVELS[character.char_class.name]:
+                # Character gets ASI/Feat at this level
+                available_feats = Feat.query.all()
 
         return render_template(
             'level_up.html',
             character=character,
             new_features=new_features,
-            asi_options=asi_options
+            asi_options=asi_options,
+            available_feats=available_feats
         )
 
     # --- POST: apply level up ---
@@ -752,6 +903,13 @@ def level_up_character(char_id):
             choice = request.form.get(f'feature_{feature.id}')
             if choice:
                 character.apply_feature_choice(feature, int(choice))  # implement this in your Character model
+
+        # Apply feat choice if any
+        feat_choice = request.form.get('feat_choice')
+        if feat_choice:
+            feat = Feat.query.get(int(feat_choice))
+            if feat and feat not in character.feats:
+                character.feats.append(feat)
 
         # Apply new spells if any
         new_spell_ids = request.form.getlist('new_spells')

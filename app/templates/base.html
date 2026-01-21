@@ -141,7 +141,11 @@
                     <i class="fas fa-users"></i>
                     <span>Characters</span>
                 </a>
-                <a href="{{ url_for('spells_page') }}" class="nav-item {% if request.endpoint == 'spells_page' %}active{% endif %}">
+                <a href="{{ url_for('grid.grid_view', code='test') }}" class="nav-item {% if request.endpoint == 'grid.grid_view' %}active{% endif %}">
+                    <i class="fas fa-gamepad"></i>
+                    <span>Grid</span>
+                </a>
+                <a href="{{ url_for('search_page') }}" class="nav-item {% if request.endpoint == 'search_page' %}active{% endif %}">
                     <i class="fas fa-wand-magic-sparkles"></i>
                     <span>Search</span>
                 </a>

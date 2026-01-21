@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import time
 import requests
 from typing import Dict, Any, List
 from app import app, db
-from models.character_struct import RaceModel, RaceFeature
+from app.models.character_struct import RaceModel, RaceFeature
 from sqlalchemy import func
 
 API_ROOT = "https://www.dnd5eapi.co"

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import time
 import requests
 from typing import Dict, Any, List
 from app import app, db
 from sqlalchemy import func
-from models.character_struct import CharacterClassModel, CharacterClassFeature
+from app.models.character_struct import CharacterClassModel, CharacterClassFeature
 
 API_ROOT = "https://www.dnd5eapi.co"
 CLASSES_URL = f"{API_ROOT}/api/classes"

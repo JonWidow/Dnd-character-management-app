@@ -1,4 +1,4 @@
-// grid.js — core grid setup
+// grid.js â€“ core grid setup
 console.log("grid.js loaded");
 
 // ----- CONSTANTS -----
@@ -9,23 +9,17 @@ export const GRID_HEIGHT = 40;
 // ----- CONTAINER -----
 export const container = document.getElementById("grid-container");
 
-// Ensure the container has some height (e.g., 60% of viewport)
+// Ensure the container has some height
 container.style.width = "100%";
-container.style.height = "60vh"; // adjust this as needed
+container.style.height = "calc(100vh - 150px)";
 
 // ----- STAGE -----
 export const stage = new Konva.Stage({
     container: "grid-container",
     width: container.clientWidth,
     height: container.clientHeight,
-    draggable: true // allow panning
+    draggable: true
 });
-
-const testDiv = document.createElement("div");
-testDiv.style.width = "100px";
-testDiv.style.height = "100px";
-testDiv.style.background = "red";
-document.body.appendChild(testDiv);
 
 
 // ----- LAYERS -----
@@ -82,4 +76,98 @@ window.addEventListener("resize", () => {
     stage.width(container.clientWidth);
     stage.height(container.clientHeight);
     stage.batchDraw();
+});
+
+// ----- ZOOM CONFIGURATION -----
+const ZOOM_CONFIG = {
+    minScale: 0.5,
+    maxScale: 3,
+    zoomSpeed: 0.1
+};
+
+// ----- MOUSE WHEEL ZOOM (Desktop) -----
+container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    
+    // Get mouse position relative to stage
+    const rect = container.getBoundingClientRect();
+    const pointerX = e.clientX - rect.left;
+    const pointerY = e.clientY - rect.top;
+    
+    const oldScale = stage.scaleX();
+    const direction = e.deltaY > 0 ? -1 : 1;
+    const newScale = Math.max(
+        ZOOM_CONFIG.minScale,
+        Math.min(ZOOM_CONFIG.maxScale, oldScale + direction * ZOOM_CONFIG.zoomSpeed)
+    );
+    
+    const scaleFactor = newScale / oldScale;
+    
+    // Pan to keep the mouse position fixed
+    const newX = pointerX - (pointerX - stage.x()) * scaleFactor;
+    const newY = pointerY - (pointerY - stage.y()) * scaleFactor;
+    
+    stage.scaleX(newScale);
+    stage.scaleY(newScale);
+    stage.x(newX);
+    stage.y(newY);
+    stage.batchDraw();
+});
+
+// ----- TOUCH PINCH ZOOM (Mobile) -----
+let lastDistance = 0;
+
+container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        lastDistance = Math.sqrt(dx * dx + dy * dy);
+    }
+});
+
+container.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        const currentDistance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (lastDistance === 0) {
+            lastDistance = currentDistance;
+            return;
+        }
+        
+        const oldScale = stage.scaleX();
+        const scaleFactor = currentDistance / lastDistance;
+        const newScale = Math.max(
+            ZOOM_CONFIG.minScale,
+            Math.min(ZOOM_CONFIG.maxScale, oldScale * scaleFactor)
+        );
+        
+        // Get center point between two touches
+        const rect = container.getBoundingClientRect();
+        const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+        const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+        
+        const scaleChange = newScale / oldScale;
+        const newX = centerX - (centerX - stage.x()) * scaleChange;
+        const newY = centerY - (centerY - stage.y()) * scaleChange;
+        
+        stage.scaleX(newScale);
+        stage.scaleY(newScale);
+        stage.x(newX);
+        stage.y(newY);
+        stage.batchDraw();
+        
+        lastDistance = currentDistance;
+    }
+});
+
+container.addEventListener('touchend', () => {
+    lastDistance = 0;
 });

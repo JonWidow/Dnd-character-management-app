@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{{ feat.name }} - Feat Details{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-lg p-6 shadow-md" style="background-color: #fafbfc;">
+    <h1 class="text-3xl font-bold mb-4 text-blue-800">{{ feat.name }}</h1>
+
+    {% if feat.prerequisites and feat.prerequisites | length > 0 %}
+    <div class="mb-6 p-4 border-l-4 border-yellow-500 bg-yellow-50">
+        <h2 class="text-lg font-semibold mb-2 text-yellow-900">Prerequisites</h2>
+        <ul class="list-disc list-inside space-y-1">
+            {% for prereq in feat.prerequisites %}
+                <li class="text-gray-700">
+                    {% if prereq.ability_score %}
+                        {{ prereq.ability_score.name }} {{ prereq.minimum_score }}
+                    {% else %}
+                        {{ prereq | string }}
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <h2 class="text-xl font-semibold mb-2">Description</h2>
+    <p class="whitespace-pre-wrap leading-relaxed" style="font-family: Georgia, 'Times New Roman', serif; font-size: 1.05rem; color: #333;">
+        {%- if feat.description -%}
+            {{ feat.description }}
+        {%- else -%}
+            <span class="text-gray-500 italic">No description available.</span>
+        {%- endif -%}
+    </p>
+
+    <div class="mt-8">
+        <a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">← Back to Characters</a>
+    </div>
+</div>
+{% endblock %}

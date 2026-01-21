@@ -104,6 +104,14 @@
             </div>
         </div>
 
+        <!-- Hit Points -->
+        <h2 class="font-semibold text-gray-700 mb-2">Hit Points</h2>
+        <div class="mb-6 p-4 bg-red-50 rounded border border-red-200">
+            <div class="text-lg font-bold text-red-700">
+                {{ character.current_hp if character.current_hp is not none else 'N/A' }} / {{ character.max_hp if character.max_hp is not none else 'N/A' }} HP
+            </div>
+        </div>
+
         <!-- Ability Scores -->
         <h2 class="font-semibold text-gray-700 mb-2">Ability Scores</h2>
         <div class="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-6">
@@ -197,25 +205,53 @@
             <div class="flex items-center justify-between mb-2">
                 <h2 class="font-semibold text-gray-700">
                     Prepared Spells
-                    <span class="text-sm text-gray-500">({{ prepared|length }}/{{ max_prepared }})</span>
+                    {% if max_prepared > 0 %}
+                        <span class="text-sm text-gray-500">({{ prepared|length }}/{{ max_prepared }})</span>
+                    {% endif %}
                 </h2>
+                {% if max_prepared > 0 %}
                 <button id="managePreparedBtn"
                         class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
                     Manage
                 </button>
+                {% endif %}
             </div>
 
             {% if prepared and prepared|length > 0 %}
-                <ul class="list-disc list-inside">
-                    {% for sp in prepared %}
-                        <li>
+                <!-- Organize prepared spells by level -->
+                {% set prepared_by_level = {} %}
+                {% for sp in prepared %}
+                  {% if prepared_by_level.update({sp.level: prepared_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+                {% endfor %}
+
+                <!-- Tabs -->
+                <div class="flex border-b mb-4 flex-wrap gap-2">
+                  {% for level in range(0, 10) %}
+                    {% if prepared_by_level.get(level) %}
+                      <button type="button" class="prepared-tab px-3 py-2 font-medium text-sm {% if level == 0 %}bg-blue-600 text-white{% else %}bg-gray-200 hover:bg-gray-300{% endif %}" data-level="{{ level }}">
+                        {% if level == 0 %}Cantrips{% else %}Level {{ level }}{% endif %}
+                      </button>
+                    {% endif %}
+                  {% endfor %}
+                </div>
+
+                <!-- Tab Content -->
+                {% for level in range(0, 10) %}
+                  {% if prepared_by_level.get(level) %}
+                    <div id="prepared-level-{{ level }}" class="prepared-content {% if level != 0 %}hidden{% endif %}">
+                      <ul class="list-disc list-inside">
+                        {% for sp in prepared_by_level[level] | sort(attribute='name') %}
+                          <li>
                             <a href="{{ url_for('spell_details', spell_id=sp.id) }}"
                                class="text-blue-600 hover:underline">
-                                {{ sp.name }} (Level {{ sp.level }})
+                                {{ sp.name }}
                             </a>
-                        </li>
-                    {% endfor %}
-                </ul>
+                          </li>
+                        {% endfor %}
+                      </ul>
+                    </div>
+                  {% endif %}
+                {% endfor %}
             {% else %}
                 <p class="text-sm text-gray-500 italic">No spells prepared.</p>
             {% endif %}
@@ -245,6 +281,35 @@
                         <li class="text-gray-500 italic">No known spells yet.</li>
                     {% endfor %}
                 </ul>
+            </div>
+        </div>
+
+        <!-- Feats (Collapsible) -->
+        <div class="mb-6 border rounded-md">
+            <button type="button" id="toggleFeats"
+                    class="w-full flex justify-between items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-t-md">
+                <span class="font-semibold text-gray-700">Feats</span>
+                <svg id="featsArrow" xmlns="http://www.w3.org/2000/svg" fill="none"
+                     viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
+                     class="w-4 h-4 transform transition-transform duration-200">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+            </button>
+
+            <div id="featsSection" class="hidden p-4">
+                {% if character.feats %}
+                    <ul class="list-disc list-inside">
+                        {% for feat in character.feats | sort(attribute='name') %}
+                            <li>
+                                <a href="{{ url_for('feat_details', feat_id=feat.id) }}" class="text-blue-600 hover:underline">
+                                    {{ feat.name }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-gray-500 italic">No feats yet.</p>
+                {% endif %}
             </div>
         </div>
 
@@ -399,6 +464,15 @@
                 knownArrow.classList.toggle('rotate-180');
             });
 
+            // Feats collapsible
+            const toggleFeats = document.getElementById('toggleFeats');
+            const featsSection = document.getElementById('featsSection');
+            const featsArrow = document.getElementById('featsArrow');
+            toggleFeats?.addEventListener('click', () => {
+                featsSection.classList.toggle('hidden');
+                featsArrow.classList.toggle('rotate-180');
+            });
+
             // Delete confirmation modal
             const deleteBtn = document.getElementById('deleteCharBtn');
             const deleteModal = document.getElementById('deleteModal');
@@ -431,6 +505,31 @@
                 if (e.target === notesModal) {
                     notesModal.classList.add('hidden');
                 }
+            });
+
+            // Prepared spells tabs
+            const preparedTabs = document.querySelectorAll('.prepared-tab');
+            preparedTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const level = tab.dataset.level;
+
+                    // Hide all contents
+                    document.querySelectorAll('.prepared-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Remove active style from all tabs
+                    preparedTabs.forEach(t => {
+                        t.classList.remove('bg-blue-600', 'text-white');
+                        t.classList.add('bg-gray-200');
+                    });
+
+                    // Show selected content and style tab
+                    document.getElementById(`prepared-level-${level}`).classList.remove('hidden');
+                    tab.classList.remove('bg-gray-200');
+                    tab.classList.add('bg-blue-600', 'text-white');
+                });
             });
 
             // Favorite button toggle

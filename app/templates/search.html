@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Global Search{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto p-6">
+    <h2 class="text-3xl font-bold mb-6 text-blue-800">🔍 Global Search</h2>
+
+    <div class="mb-6">
+        <input type="text" id="search-bar" placeholder="Search spells, classes, feats, races, features..."
+            class="w-full border rounded p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
+
+        <!-- Filter Toggle Button -->
+        <button id="filter-toggle" class="text-sm text-gray-600 hover:text-gray-900 mb-4">
+            ⚙️ Show Filters
+        </button>
+
+        <!-- Filter Options (hidden by default) -->
+        <div id="filter-panel" class="hidden bg-gray-50 border rounded p-4 mb-4">
+            <h3 class="font-semibold text-gray-700 mb-3">Filter Results:</h3>
+            <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="filter-checkbox" value="spells" checked> <span>Spells</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="filter-checkbox" value="classes" checked> <span>Classes</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="filter-checkbox" value="subclasses" checked> <span>Subclasses</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="filter-checkbox" value="races" checked> <span>Races</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="filter-checkbox" value="feats" checked> <span>Feats</span>
+                </label>
+                <label class="flex items-center space-x-2">
+                    <input type="checkbox" class="filter-checkbox" value="features" checked> <span>Features</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Container -->
+    <div id="results" class="space-y-6"></div>
+
+    <script>
+        const searchBar = document.getElementById('search-bar');
+        const filterToggle = document.getElementById('filter-toggle');
+        const filterPanel = document.getElementById('filter-panel');
+        const filterCheckboxes = document.querySelectorAll('.filter-checkbox');
+        const resultsDiv = document.getElementById('results');
+        let timeout = null;
+
+        // Toggle filter panel visibility
+        filterToggle.addEventListener('click', () => {
+            filterPanel.classList.toggle('hidden');
+            filterToggle.textContent = filterPanel.classList.contains('hidden') ? '⚙️ Show Filters' : '⚙️ Hide Filters';
+        });
+
+        // Function to perform search
+        function performSearch() {
+            clearTimeout(timeout);
+            timeout = setTimeout(async () => {
+                const query = searchBar.value.trim();
+                
+                // Get selected filters
+                const selectedFilters = Array.from(filterCheckboxes)
+                    .filter(cb => cb.checked)
+                    .map(cb => cb.value);
+                
+                if (!query) {
+                    resultsDiv.innerHTML = '<p class="text-gray-500 italic">Enter a search term to begin...</p>';
+                    return;
+                }
+                
+                // Build query string with filters
+                const params = new URLSearchParams({ q: query });
+                selectedFilters.forEach(f => params.append('filter', f));
+                
+                const res = await fetch(`/api/search?${params.toString()}`);
+                const data = await res.json();
+                
+                // Render results grouped by type
+                let html = '';
+                const typeConfig = {
+                    spells: { label: '📜 Spells', icon: '✨', link: (r) => `/spells/${r.id}` },
+                    classes: { label: '🎯 Classes', icon: '⚔️', link: (r) => `/classes/${r.name}` },
+                    subclasses: { label: '🔮 Subclasses', icon: '✨', link: (r) => `/subclasses/${r.id}` },
+                    races: { label: '👥 Races', icon: '🏠', link: (r) => `/races/${r.name}` },
+                    feats: { label: '⭐ Feats', icon: '🌟', link: (r) => `/feats/${r.id}` },
+                    features: { label: '🎁 Features', icon: '📋', link: (r) => `#` }
+                };
+                
+                let hasResults = false;
+                
+                for (const [type, config] of Object.entries(typeConfig)) {
+                    if (data[type] && data[type].length > 0) {
+                        hasResults = true;
+                        html += `<div class="mb-6">
+                            <h3 class="text-xl font-semibold mb-3 text-gray-700">${config.label}</h3>
+                            <div class="space-y-2">`;
+                        
+                        data[type].forEach(item => {
+                            html += `
+                                <a href="${config.link(item)}" target="_blank" class="block p-3 rounded hover:bg-gray-100 transition border border-gray-200">
+                                    <div class="flex items-start">
+                                        <span class="mr-2">${config.icon}</span>
+                                        <div class="flex-1">
+                                            <strong class="text-gray-900">${item.name}</strong>
+                                            ${item.detail ? `<span class="text-sm text-gray-600 ml-2">${item.detail}</span>` : ''}
+                                        </div>
+                                    </div>
+                                </a>
+                            `;
+                        });
+                        
+                        html += `</div></div>`;
+                    }
+                }
+                
+                if (!hasResults) {
+                    html = '<p class="text-gray-500 italic">No results found. Try a different search term.</p>';
+                }
+                
+                resultsDiv.innerHTML = html;
+            }, 300);
+        }
+
+        // Search on input
+        searchBar.addEventListener('input', performSearch);
+        
+        // Search when filters change
+        filterCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', performSearch);
+</div>
+{% endblock %}

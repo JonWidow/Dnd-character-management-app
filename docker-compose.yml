@@ -7,7 +7,7 @@ services:
     volumes:
       - ./app:/app/app
       - ./scripts:/app/scripts
-      - ./instance:/app/instance
+      - ./instance:/app/instance  # IMPORTANT: DO NOT DELETE THIS VOLUME
       - ./logs:/app/logs
     environment:
       FLASK_ENV: development
@@ -16,8 +16,21 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    # Health check to verify database is accessible
+    healthcheck:
+      test: ["CMD", "ls", "-f", "/app/instance/characters.db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   redis:
     image: redis:7-alpine
     container_name: dnd-redis
     restart: unless-stopped
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:
+    driver: local
