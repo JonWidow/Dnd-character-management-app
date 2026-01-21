@@ -241,9 +241,20 @@ async function toggleSpellSlot(event, characterId, slotId, slotIndex) {
         console.log('Button color:', bgColor);
         
         // Check if button is red (used) or blue (available)
-        // Red: rgb(239, 68, 68) or #ef4444
-        // Blue: rgb(59, 130, 246) or #3b82f6
-        const isUsed = bgColor.includes('239') || bgColor === '#ef4444';
+        // Red: rgb(248, 113, 113) or similar red tones
+        // Blue: rgb(96, 165, 250) or similar blue tones
+        // Look for red if the first color component (R) is high and second (G) is low
+        const rgbMatch = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+        let isUsed = false;
+        
+        if (rgbMatch) {
+            const r = parseInt(rgbMatch[1]);
+            const g = parseInt(rgbMatch[2]);
+            const b = parseInt(rgbMatch[3]);
+            // Red has high R, low G. Blue has moderate R and G but high B
+            isUsed = r > 200 && g < 150;  // Red colors
+            console.log(`RGB: R=${r}, G=${g}, B=${b}, is used: ${isUsed}`);
+        }
         
         console.log('Is used:', isUsed, 'Will use_slot:', !isUsed);
         
