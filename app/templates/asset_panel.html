@@ -38,6 +38,10 @@
 </div>
 
 <script>
+    // Global AssetLoader instance
+    let assetLoader = null;
+    let selectedAssetPath = null;
+    
     // Asset panel visibility toggle
     const assetPanelBtn = document.getElementById('toggleAssetPanel');
     const assetPanel = document.getElementById('assetPanel');
@@ -46,8 +50,8 @@
     if (assetPanelBtn && assetPanel && closeAssetPanelBtn) {
         assetPanelBtn.addEventListener('click', () => {
             assetPanel.style.display = assetPanel.style.display === 'none' ? 'block' : 'none';
-            if (assetPanel.style.display === 'block') {
-                loadAssets();
+            if (assetPanel.style.display === 'block' && !assetLoader) {
+                initAssetLoader();
             }
         });
         
@@ -56,88 +60,119 @@
         });
     }
     
-    // Load assets from API
-    async function loadAssets() {
+    // Initialize AssetLoader when needed
+    async function initAssetLoader() {
         try {
-            const response = await fetch('/api/assets/list');
-            const assets = await response.json();
+            // Fetch available assets
+            const assetsResponse = await fetch('/api/assets/files');
+            const assets = await assetsResponse.json();
             
-            // Load categories
-            const categoryFilter = document.getElementById('assetCategoryFilter');
-            const categories = [...new Set(assets.map(a => a.category))];
-            categories.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat;
-                option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
-                categoryFilter.appendChild(option);
-            });
+            // Fetch categories
+            const categoriesResponse = await fetch('/api/assets/files/categories');
+            const categories = await categoriesResponse.json();
             
-            // Display assets
-            displayAssets(assets);
-            
-            // Category filter change
-            categoryFilter.addEventListener('change', (e) => {
-                const filtered = e.target.value 
-                    ? assets.filter(a => a.category === e.target.value)
-                    : assets;
-                displayAssets(filtered);
-            });
+            // Display assets in palette
+            displayAssetPalette(assets, categories);
         } catch (error) {
-            console.error('Error loading assets:', error);
+            console.error('Error initializing asset loader:', error);
+            document.getElementById('assetsList').innerHTML = '<p style="color: #e74c3c; padding: 10px;">Error loading assets</p>';
         }
     }
     
-    function displayAssets(assets) {
+    function displayAssetPalette(assets, categories) {
         const assetsList = document.getElementById('assetsList');
-        assetsList.innerHTML = '';
+        const categoryFilter = document.getElementById('assetCategoryFilter');
         
-        assets.forEach(asset => {
-            const assetEl = document.createElement('div');
-            assetEl.style.cssText = `
-                padding: 10px;
-                margin-bottom: 8px;
-                background: #f9f9f9;
-                border: 1px solid #e0e0e0;
-                border-radius: 6px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            `;
+        assetsList.innerHTML = '';
+        categoryFilter.innerHTML = '<option value="">All Categories</option>';
+        
+        // Add category options
+        Object.entries(categories).forEach(([key, desc]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = key.charAt(0).toUpperCase() + key.slice(1);
+            categoryFilter.appendChild(option);
+        });
+        
+        // Display assets by category
+        const displayByCategory = (selectedCat = '') => {
+            assetsList.innerHTML = '';
             
-            assetEl.innerHTML = `
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <div style="width: 40px; height: 40px; background: ${asset.color_tag}; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc;"></div>
-                    <div style="flex: 1;">
-                        <div style="font-weight: 600; font-size: 12px; color: #333;">${asset.name}</div>
-                        <div style="font-size: 11px; color: #666;">${asset.description}</div>
-                    </div>
-                </div>
-            `;
-            
-            assetEl.addEventListener('mouseenter', () => {
-                assetEl.style.background = '#f0f4ff';
-                assetEl.style.borderColor = '#2a5298';
+            Object.entries(assets).forEach(([category, assetList]) => {
+                if (selectedCat && category !== selectedCat) return;
+                
+                if (assetList.length === 0) {
+                    assetsList.innerHTML += `<p style="color: #999; padding: 10px; font-size: 12px;">No assets in ${category}</p>`;
+                    return;
+                }
+                
+                if (!selectedCat) {
+                    const categoryLabel = document.createElement('div');
+                    categoryLabel.style.cssText = 'padding: 8px 14px 4px; font-weight: 600; font-size: 11px; color: #999; text-transform: uppercase; border-bottom: 1px solid #f0f0f0; margin: 8px 0 4px 0;';
+                    categoryLabel.textContent = category;
+                    assetsList.appendChild(categoryLabel);
+                }
+                
+                assetList.forEach(asset => {
+                    const assetEl = document.createElement('div');
+                    assetEl.style.cssText = `
+                        padding: 10px;
+                        margin: 4px 0;
+                        background: #f9f9f9;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 6px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        display: flex;
+                        gap: 8px;
+                        align-items: center;
+                    `;
+                    
+                    // Asset preview image
+                    const preview = document.createElement('img');
+                    preview.src = asset.path;
+                    preview.style.cssText = 'width: 40px; height: 40px; object-fit: contain; background: white; border: 1px solid #ddd; border-radius: 4px;';
+                    preview.onerror = () => {
+                        preview.style.background = '#e8ecf1';
+                        preview.style.display = 'none';
+                    };
+                    
+                    // Asset name
+                    const label = document.createElement('div');
+                    label.style.cssText = 'flex: 1;';
+                    label.innerHTML = `<div style="font-weight: 600; font-size: 12px; color: #333;">${asset.name}</div>`;
+                    
+                    assetEl.appendChild(preview);
+                    assetEl.appendChild(label);
+                    
+                    assetEl.addEventListener('mouseenter', () => {
+                        assetEl.style.background = '#f0f4ff';
+                        assetEl.style.borderColor = '#2a5298';
+                    });
+                    
+                    assetEl.addEventListener('mouseleave', () => {
+                        assetEl.style.background = '#f9f9f9';
+                        assetEl.style.borderColor = '#e0e0e0';
+                    });
+                    
+                    assetEl.addEventListener('click', () => {
+                        selectedAssetPath = asset.path;
+                        window.selectedAsset = asset;
+                        assetPanel.style.display = 'none';
+                        console.log('Selected asset:', asset);
+                    });
+                    
+                    assetsList.appendChild(assetEl);
+                });
             });
-            
-            assetEl.addEventListener('mouseleave', () => {
-                assetEl.style.background = '#f9f9f9';
-                assetEl.style.borderColor = '#e0e0e0';
-            });
-            
-            assetEl.addEventListener('click', () => {
-                window.selectedAsset = asset;
-                assetsList.parentElement.style.display = 'none';
-                alert(`Selected: ${asset.name}\nClick on the grid to place it (or drag from here)`);
-            });
-            
-            // Drag support
-            assetEl.draggable = true;
-            assetEl.addEventListener('dragstart', (e) => {
-                e.dataTransfer.setData('assetId', asset.id);
-                e.dataTransfer.setData('assetData', JSON.stringify(asset));
-                window.draggedAsset = asset;
-            });
-            
-            assetsList.appendChild(assetEl);
+        };
+        
+        // Initial display
+        displayByCategory();
+        
+        // Category filter change
+        categoryFilter.addEventListener('change', (e) => {
+            displayByCategory(e.target.value);
         });
     }
     

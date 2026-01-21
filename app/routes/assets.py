@@ -2,9 +2,31 @@
 from flask import Blueprint, jsonify, request, current_app
 from app.models import db
 from app.models.asset import GridAsset
+from app.utils.asset_manager import get_assets, get_asset_categories
 import os
+from pathlib import Path
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/api/assets')
+
+
+@assets_bp.route('/files', methods=['GET'])
+def get_asset_files():
+    """Get list of available SVG asset files from the static/assets directory."""
+    category = request.args.get('category')
+    assets = get_assets(category)
+    
+    if category:
+        return jsonify(assets)
+    
+    # Return all categories
+    return jsonify(assets)
+
+
+@assets_bp.route('/files/categories', methods=['GET'])
+def get_asset_file_categories():
+    """Get all available asset categories from filesystem."""
+    categories = get_asset_categories()
+    return jsonify(categories)
 
 
 @assets_bp.route('/list', methods=['GET'])
