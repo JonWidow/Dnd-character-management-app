@@ -17,19 +17,29 @@ export class AssetPlacementHandler {
     setupEventListeners() {
         // Click on canvas to place selected asset
         this.stage.on('click', (e) => {
+            console.log('[AssetPlacement] Stage clicked, placement mode:', this.gridModule.assetPlacementMode);
+            
             if (!this.gridModule.assetPlacementMode || !this.gridModule.selectedAssetPath) {
+                console.log('[AssetPlacement] Placement mode inactive or no asset selected');
                 return;
             }
 
             // Prevent placing on UI elements
             if (e.target === this.stage) {
                 const pos = this.stage.getPointerPosition();
+                console.log('[AssetPlacement] Placing asset at:', pos);
                 this.placeAsset(pos.x, pos.y);
             }
         });
 
         // Drag and drop from asset panel
         const gridContainer = document.getElementById('grid-container');
+        if (!gridContainer) {
+            console.error('[AssetPlacement] Grid container not found');
+            return;
+        }
+        
+        console.log('[AssetPlacement] Setting up drag-drop listeners on grid container');
         
         gridContainer.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -46,21 +56,27 @@ export class AssetPlacementHandler {
         gridContainer.addEventListener('drop', (e) => {
             e.preventDefault();
             gridContainer.style.backgroundColor = '';
-
+            
+            console.log('[AssetPlacement] Drop event received');
+            
             const assetData = e.dataTransfer.getData('application/json');
             if (assetData) {
                 try {
                     const asset = JSON.parse(assetData);
+                    console.log('[AssetPlacement] Dropped asset:', asset);
                     const rect = gridContainer.getBoundingClientRect();
                     const x = e.clientX - rect.left;
                     const y = e.clientY - rect.top;
                     
                     // Convert to stage coordinates
                     const stagePos = this.stage.getPointerPosition();
+                    console.log('[AssetPlacement] Drop position (stage):', stagePos);
                     this.placeAsset(stagePos.x, stagePos.y, asset.path);
                 } catch (error) {
-                    console.error('Error parsing dropped asset:', error);
+                    console.error('[AssetPlacement] Error parsing dropped asset:', error);
                 }
+            } else {
+                console.log('[AssetPlacement] No asset data in drop event');
             }
         });
     }

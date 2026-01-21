@@ -330,6 +330,13 @@
         const assetLoader = new AssetLoader(gridModule.assetLayer);
         assetPlacementHandler.setAssetLoader(assetLoader);
         
+        // Expose to global scope so asset panel can access them
+        window.gridModule = gridModule;
+        window.assetLoader = assetLoader;
+        window.assetPlacementHandler = assetPlacementHandler;
+        
+        console.log('[Grid] Initialization complete:', {gridModule, assetLoader, assetPlacementHandler});
+        
         // Setup socket.io
         const socket = io();
         console.log('[CLIENT] Socket created:', socket);

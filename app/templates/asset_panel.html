@@ -38,6 +38,8 @@
 </div>
 
 <script>
+    console.log('[AssetPanel] Asset panel script loaded');
+    
     // Global AssetLoader instance
     let assetLoader = null;
     let selectedAssetPath = null;
@@ -47,15 +49,20 @@
     const assetPanel = document.getElementById('assetPanel');
     const closeAssetPanelBtn = document.getElementById('closeAssetPanel');
     
+    console.log('[AssetPanel] Elements found:', {assetPanelBtn, assetPanel, closeAssetPanelBtn});
+    
     if (assetPanelBtn && assetPanel && closeAssetPanelBtn) {
         assetPanelBtn.addEventListener('click', () => {
+            console.log('[AssetPanel] Toggle button clicked');
             assetPanel.style.display = assetPanel.style.display === 'none' ? 'block' : 'none';
-            if (assetPanel.style.display === 'block' && !assetLoader) {
+            if (assetPanel.style.display === 'block') {
+                console.log('[AssetPanel] Panel opened, loading assets');
                 initAssetLoader();
             }
         });
         
         closeAssetPanelBtn.addEventListener('click', () => {
+            console.log('[AssetPanel] Close button clicked');
             assetPanel.style.display = 'none';
         });
     }
@@ -63,18 +70,21 @@
     // Initialize AssetLoader when needed
     async function initAssetLoader() {
         try {
+            console.log('[AssetPanel] Fetching assets from API');
             // Fetch available assets
             const assetsResponse = await fetch('/api/assets/files');
             const assets = await assetsResponse.json();
+            console.log('[AssetPanel] Assets received:', assets);
             
             // Fetch categories
             const categoriesResponse = await fetch('/api/assets/files/categories');
             const categories = await categoriesResponse.json();
+            console.log('[AssetPanel] Categories received:', categories);
             
             // Display assets in palette
             displayAssetPalette(assets, categories);
         } catch (error) {
-            console.error('Error initializing asset loader:', error);
+            console.error('[AssetPanel] Error initializing asset loader:', error);
             document.getElementById('assetsList').innerHTML = '<p style="color: #e74c3c; padding: 10px;">Error loading assets</p>';
         }
     }
@@ -156,14 +166,18 @@
                     });
                     
                     assetEl.addEventListener('click', () => {
+                        console.log('[AssetPanel] Asset clicked:', asset);
                         selectedAssetPath = asset.path;
                         window.selectedAsset = asset;
                         assetPanel.style.display = 'none';
                         
                         // Enable asset placement mode on grid
-                        if (typeof gridModule !== 'undefined' && gridModule.setAssetPlacementMode) {
-                            gridModule.setAssetPlacementMode(asset.path);
-                            console.log('Click on the grid to place the asset, or press Escape to cancel');
+                        if (window.gridModule && window.gridModule.setAssetPlacementMode) {
+                            console.log('[AssetPanel] Setting placement mode for:', asset.path);
+                            window.gridModule.setAssetPlacementMode(asset.path);
+                            console.log('[AssetPanel] Click on the grid to place the asset, or press Escape to cancel');
+                        } else {
+                            console.error('[AssetPanel] gridModule not available:', window.gridModule);
                         }
                     });
                     

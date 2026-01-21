@@ -90,27 +90,10 @@ class AssetLoader {
         try {
             console.log(`[AssetLoader] Creating image from: ${assetPath}`);
             
-            // Load the SVG content
-            const svgContent = await this.loadSVGAsset(assetPath);
-            if (!svgContent) {
-                console.error(`[AssetLoader] Failed to load SVG content from ${assetPath}`);
-                return null;
-            }
-
-            // Create a canvas to render the SVG
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-
-            // Create blob and URL for the SVG
-            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
-            const url = URL.createObjectURL(blob);
-            console.log(`[AssetLoader] Created blob URL: ${url}`);
-
-            // Create image to render SVG to canvas
+            // Create image element directly from SVG file path
             const img = new Image();
-            img.src = url;
+            img.src = assetPath;
+            img.crossOrigin = 'anonymous';
 
             // Return a promise that resolves when image is loaded
             return new Promise((resolve, reject) => {
@@ -123,9 +106,15 @@ class AssetLoader {
                     console.log(`[AssetLoader] SVG image loaded: ${img.width}x${img.height}`);
                     
                     try {
-                        // Draw SVG to canvas
+                        // Create canvas to render SVG
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Draw the image onto canvas
                         ctx.drawImage(img, 0, 0, width, height);
-                        console.log(`[AssetLoader] SVG rendered to canvas`);
+                        console.log(`[AssetLoader] SVG rendered to canvas (${width}x${height})`);
                         
                         // Create Konva image from canvas
                         const konvaImage = new Konva.Image({
