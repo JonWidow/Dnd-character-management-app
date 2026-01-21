@@ -64,10 +64,6 @@ export function drawDebugGrid() {
         }));
     }
 
-    // crosshairs at origin
-    gridLayer.add(new Konva.Line({ points: [-2000, 0, 2000, 0], stroke: "red", strokeWidth: 4 }));
-    gridLayer.add(new Konva.Line({ points: [0, -2000, 0, 2000], stroke: "red", strokeWidth: 4 }));
-
     gridLayer.draw();
 }
 
