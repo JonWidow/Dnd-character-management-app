@@ -6,39 +6,39 @@
 <div class="max-w-4xl mx-auto p-6">
     <h2 class="text-3xl font-bold mb-6 text-blue-800">🔍 Global Search</h2>
 
+    <!-- Filter Toggle Button -->
+    <button id="filter-toggle" class="text-sm text-gray-600 hover:text-gray-900 mb-4">
+        ⚙️ Show Filters
+    </button>
+
+    <!-- Filter Options (hidden by default) -->
+    <div id="filter-panel" class="hidden bg-gray-50 border rounded p-4 mb-6">
+        <h3 class="font-semibold text-gray-700 mb-3">Filter Results:</h3>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" class="filter-checkbox" value="spells" checked> <span>Spells</span>
+            </label>
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" class="filter-checkbox" value="classes" checked> <span>Classes</span>
+            </label>
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" class="filter-checkbox" value="subclasses" checked> <span>Subclasses</span>
+            </label>
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" class="filter-checkbox" value="races" checked> <span>Races</span>
+            </label>
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" class="filter-checkbox" value="feats" checked> <span>Feats</span>
+            </label>
+            <label class="flex items-center space-x-2">
+                <input type="checkbox" class="filter-checkbox" value="features" checked> <span>Features</span>
+            </label>
+        </div>
+    </div>
+
     <div class="mb-6">
         <input type="text" id="search-bar" placeholder="Search spells, classes, feats, races, features..."
             class="w-full border rounded p-3 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg">
-
-        <!-- Filter Toggle Button -->
-        <button id="filter-toggle" class="text-sm text-gray-600 hover:text-gray-900 mb-4">
-            ⚙️ Show Filters
-        </button>
-
-        <!-- Filter Options (hidden by default) -->
-        <div id="filter-panel" class="hidden bg-gray-50 border rounded p-4 mb-4">
-            <h3 class="font-semibold text-gray-700 mb-3">Filter Results:</h3>
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="filter-checkbox" value="spells" checked> <span>Spells</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="filter-checkbox" value="classes" checked> <span>Classes</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="filter-checkbox" value="subclasses" checked> <span>Subclasses</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="filter-checkbox" value="races" checked> <span>Races</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="filter-checkbox" value="feats" checked> <span>Feats</span>
-                </label>
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="filter-checkbox" value="features" checked> <span>Features</span>
-                </label>
-            </div>
-        </div>
     </div>
 
     <!-- Results Container -->
@@ -133,5 +133,7 @@
         // Search when filters change
         filterCheckboxes.forEach(checkbox => {
             checkbox.addEventListener('change', performSearch);
+        });
+    </script>
 </div>
 {% endblock %}
