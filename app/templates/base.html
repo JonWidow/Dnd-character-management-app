@@ -56,7 +56,7 @@
             }
         }
 
-        /* Desktop: always show sidebar, wider */
+        /* Desktop: conditionally adjust margin based on sidebar visibility */
         @media (min-width: 768px) {
             .sidebar {
                 width: 260px;
@@ -65,13 +65,25 @@
             .sidebar.hidden {
                 transform: translateX(0) !important;
             }
-            .main-content {
+            /* Only add margin when sidebar is NOT hidden */
+            .sidebar:not(.hidden) ~ .main-content,
+            .sidebar:not(.hidden) ~ * + .main-content {
+                margin-left: 260px;
+            }
+            .sidebar:not(.hidden) ~ header + .main-content,
+            .sidebar:not(.hidden) ~ header ~ .main-content {
                 margin-left: 260px;
             }
         }
 
         .main-content {
             transition: margin-left 0.3s ease;
+            margin-left: 0;
+        }
+
+        /* Alternative class-based approach for better compatibility */
+        .main-content.sidebar-expanded {
+            margin-left: 260px;
         }
 
         .nav-item {
@@ -229,18 +241,30 @@
         // Sidebar toggle for both mobile and desktop
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
+        const mainContent = document.querySelector('.main-content');
+
+        // Helper function to update margin based on sidebar state
+        function updateMainContentMargin() {
+            if (window.innerWidth >= 768 && !sidebar.classList.contains('hidden')) {
+                mainContent.classList.add('sidebar-expanded');
+            } else {
+                mainContent.classList.remove('sidebar-expanded');
+            }
+        }
 
         // Load sidebar state from localStorage
         const sidebarHidden = localStorage.getItem('sidebarHidden') === 'true';
         if (sidebarHidden && window.innerWidth >= 768) {
             sidebar.classList.add('hidden');
         }
+        updateMainContentMargin();
 
         sidebarToggle?.addEventListener('click', () => {
             sidebar.classList.toggle('hidden');
             // Save preference to localStorage
             const isHidden = sidebar.classList.contains('hidden');
             localStorage.setItem('sidebarHidden', isHidden);
+            updateMainContentMargin();
         });
 
         // Close sidebar when clicking a link on mobile only
@@ -262,11 +286,12 @@
             }
         });
 
-        // Reset sidebar to visible on resize to desktop
+        // Reset sidebar to visible on resize to desktop and update margin
         window.addEventListener('resize', () => {
             if (window.innerWidth >= 768) {
                 sidebar.classList.remove('hidden');
             }
+            updateMainContentMargin();
         });
     </script>
 </body>
