@@ -318,9 +318,17 @@
     <script type="module">
         import * as gridModule from "{{ url_for('static', filename='grid/grid.js') }}";
         import * as tokensModule from "{{ url_for('static', filename='grid/tokens.js') }}";
+        import AssetPlacementHandler from "{{ url_for('static', filename='grid/assetPlacement.js') }}";
 
         // Initialize the grid
         gridModule.drawDebugGrid();
+        
+        // Initialize asset placement
+        const assetPlacementHandler = new AssetPlacementHandler(gridModule.stage, gridModule.assetLayer, gridModule);
+        
+        // Initialize AssetLoader
+        const assetLoader = new AssetLoader(gridModule.assetLayer);
+        assetPlacementHandler.setAssetLoader(assetLoader);
         
         // Setup socket.io
         const socket = io();
@@ -570,6 +578,14 @@
             
             if (e.target.id !== 'statsPanel' && !e.target.closest('#statsPanel')) {
                 statsPanel.style.display = 'none';
+            }
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && gridModule.assetPlacementMode) {
+                gridModule.disableAssetPlacementMode();
+                console.log('Asset placement cancelled');
             }
         });
 

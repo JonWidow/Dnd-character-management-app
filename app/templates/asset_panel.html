@@ -159,7 +159,23 @@
                         selectedAssetPath = asset.path;
                         window.selectedAsset = asset;
                         assetPanel.style.display = 'none';
-                        console.log('Selected asset:', asset);
+                        
+                        // Enable asset placement mode on grid
+                        if (typeof gridModule !== 'undefined' && gridModule.setAssetPlacementMode) {
+                            gridModule.setAssetPlacementMode(asset.path);
+                            console.log('Click on the grid to place the asset, or press Escape to cancel');
+                        }
+                    });
+                    
+                    // Drag support
+                    assetEl.draggable = true;
+                    assetEl.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.effectAllowed = 'copy';
+                        e.dataTransfer.setData('application/json', JSON.stringify(asset));
+                    });
+                    
+                    assetEl.addEventListener('dragend', (e) => {
+                        e.dataTransfer.dropEffect = 'copy';
                     });
                     
                     assetsList.appendChild(assetEl);

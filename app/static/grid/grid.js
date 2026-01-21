@@ -26,10 +26,30 @@ export const stage = new Konva.Stage({
 export const gridLayer = new Konva.Layer();
 export const debugLayer = new Konva.Layer();
 export const tokenLayer = new Konva.Layer();
+export const assetLayer = new Konva.Layer();
 
 stage.add(gridLayer);
 stage.add(debugLayer);
 stage.add(tokenLayer);
+stage.add(assetLayer);
+
+// ----- ASSET PLACEMENT -----
+export let assetPlacementMode = false;
+export let selectedAssetPath = null;
+
+export function setAssetPlacementMode(assetPath) {
+    selectedAssetPath = assetPath;
+    assetPlacementMode = true;
+    container.style.cursor = 'crosshair';
+    console.log('Asset placement mode enabled for:', assetPath);
+}
+
+export function disableAssetPlacementMode() {
+    assetPlacementMode = false;
+    selectedAssetPath = null;
+    container.style.cursor = 'default';
+    console.log('Asset placement mode disabled');
+}
 
 // ----- DRAW GRID -----
 export function drawDebugGrid() {
