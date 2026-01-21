@@ -83,20 +83,24 @@ export class AssetPlacementHandler {
         const path = assetPath || this.gridModule.selectedAssetPath;
         
         if (!path) {
-            console.warn('No asset selected');
+            console.warn('[AssetPlacement] No asset selected');
             return;
         }
 
         if (!this.assetLoader) {
-            console.error('AssetLoader not initialized');
+            console.error('[AssetPlacement] AssetLoader not initialized');
             return;
         }
+
+        console.log(`[AssetPlacement] Placing asset at (${x}, ${y}): ${path}`);
 
         try {
             // Create Konva image from SVG
             const konvaImage = await this.assetLoader.createAssetImage(path, x, y, 50, 50);
             
             if (konvaImage) {
+                console.log('[AssetPlacement] Asset image created, adding to layer');
+                
                 // Add interaction
                 this.addAssetInteraction(konvaImage);
                 
@@ -104,18 +108,22 @@ export class AssetPlacementHandler {
                 this.assetLayer.add(konvaImage);
                 this.assetLayer.draw();
                 
+                console.log('[AssetPlacement] Asset added to layer and drawn');
+                
                 // Track placed asset
                 const assetId = this.assetIdCounter++;
                 this.placedAssets.set(assetId, konvaImage);
                 konvaImage.assetId = assetId;
                 
-                console.log(`Asset placed at (${x}, ${y})`);
+                console.log(`[AssetPlacement] Asset placed with ID: ${assetId}`);
                 
                 // Disable placement mode after single placement
                 this.gridModule.disableAssetPlacementMode();
+            } else {
+                console.error('[AssetPlacement] Failed to create asset image');
             }
         } catch (error) {
-            console.error('Error placing asset:', error);
+            console.error('[AssetPlacement] Error placing asset:', error);
         }
     }
 

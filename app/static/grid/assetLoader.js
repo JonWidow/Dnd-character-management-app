@@ -88,40 +88,78 @@ class AssetLoader {
      */
     async createAssetImage(assetPath, x, y, width = 50, height = 50) {
         try {
+            console.log(`[AssetLoader] Creating image from: ${assetPath}`);
+            
+            // Load the SVG content
             const svgContent = await this.loadSVGAsset(assetPath);
-            if (!svgContent) return null;
+            if (!svgContent) {
+                console.error(`[AssetLoader] Failed to load SVG content from ${assetPath}`);
+                return null;
+            }
 
-            // Create a blob from SVG content
+            // Create a canvas to render the SVG
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+
+            // Create blob and URL for the SVG
             const blob = new Blob([svgContent], { type: 'image/svg+xml' });
             const url = URL.createObjectURL(blob);
+            console.log(`[AssetLoader] Created blob URL: ${url}`);
 
-            // Create image element
+            // Create image to render SVG to canvas
             const img = new Image();
             img.src = url;
 
             // Return a promise that resolves when image is loaded
             return new Promise((resolve, reject) => {
-                img.onload = () => {
-                    const konvaImage = new Konva.Image({
-                        image: img,
-                        x: x,
-                        y: y,
-                        width: width,
-                        height: height,
-                        draggable: true,
-                        name: 'asset'
-                    });
+                const timeout = setTimeout(() => {
+                    reject(new Error(`Image loading timeout for ${assetPath}`));
+                }, 5000);
 
-                    resolve(konvaImage);
+                img.onload = () => {
+                    clearTimeout(timeout);
+                    console.log(`[AssetLoader] SVG image loaded: ${img.width}x${img.height}`);
+                    
+                    try {
+                        // Draw SVG to canvas
+                        ctx.drawImage(img, 0, 0, width, height);
+                        console.log(`[AssetLoader] SVG rendered to canvas`);
+                        
+                        // Create Konva image from canvas
+                        const konvaImage = new Konva.Image({
+                            image: canvas,
+                            x: x,
+                            y: y,
+                            width: width,
+                            height: height,
+                            draggable: true,
+                            name: 'asset'
+                        });
+
+                        console.log(`[AssetLoader] Konva image created at (${x}, ${y})`);
+                        resolve(konvaImage);
+                    } catch (error) {
+                        console.error(`[AssetLoader] Error rendering SVG to canvas:`, error);
+                        reject(error);
+                    }
                 };
 
                 img.onerror = () => {
-                    console.error(`Failed to load image from SVG: ${assetPath}`);
+                    clearTimeout(timeout);
+                    console.error(`[AssetLoader] Failed to load SVG image: ${assetPath}`);
                     reject(new Error(`Failed to load asset image: ${assetPath}`));
+                };
+                
+                img.onabort = () => {
+                    clearTimeout(timeout);
+                    console.error(`[AssetLoader] SVG image loading aborted: ${assetPath}`);
+                    reject(new Error(`SVG loading aborted: ${assetPath}`));
                 };
             });
         } catch (error) {
-            console.error(`Error creating asset image:`, error);
+            console.error(`[AssetLoader] Error creating asset image:`, error);
             return null;
         }
     }

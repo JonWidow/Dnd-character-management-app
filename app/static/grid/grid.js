@@ -23,15 +23,17 @@ export const stage = new Konva.Stage({
 
 
 // ----- LAYERS -----
+// Layer order: grid (bottom) -> assets -> debug -> tokens (top)
+// This ensures tokens always appear above terrain/objects/effects
 export const gridLayer = new Konva.Layer();
+export const assetLayer = new Konva.Layer();
 export const debugLayer = new Konva.Layer();
 export const tokenLayer = new Konva.Layer();
-export const assetLayer = new Konva.Layer();
 
 stage.add(gridLayer);
+stage.add(assetLayer);  // Assets behind everything else
 stage.add(debugLayer);
-stage.add(tokenLayer);
-stage.add(assetLayer);
+stage.add(tokenLayer);  // Tokens on top
 
 // ----- ASSET PLACEMENT -----
 export let assetPlacementMode = false;
