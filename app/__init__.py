@@ -807,6 +807,11 @@ def edit_character(char_id: int):
             if val is not None:
                 setattr(char, key, val)
 
+        # Handle armor class
+        ac = request.form.get('armor_class', type=int)
+        if ac is not None and ac >= 1:
+            char.armor_class = ac
+
         # known spells selection
         spell_ids = request.form.getlist('known_spells')
         if spell_ids is not None:

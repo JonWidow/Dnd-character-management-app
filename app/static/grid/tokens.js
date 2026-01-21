@@ -160,6 +160,7 @@ async function showCharacterStats(characterId, x, y) {
         // Display HP - store character ID for update button
         document.getElementById('characterCurrentHP').value = character.current_hp;
         document.getElementById('characterMaxHP').textContent = character.hit_points;
+        document.getElementById('characterAC').textContent = character.armor_class || 10;
         statsPanel.dataset.characterId = character.id;
         
         // Display spell slots with visual indicators

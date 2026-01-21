@@ -52,6 +52,7 @@ class Character(db.Model):
 
     max_hp = db.Column(db.Integer, default=0)
     current_hp = db.Column(db.Integer, default=0)
+    armor_class = db.Column(db.Integer, default=10)
     
     # New fields for favorites and notes
     is_favorite = db.Column(db.Boolean, default=False)
