@@ -1,5 +1,5 @@
 """Asset model for grid items like terrain, objects, and effects."""
-from app.extensions import db
+from . import db
 from datetime import datetime
 
 

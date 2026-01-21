@@ -1,7 +1,7 @@
 """Blueprint for grid asset management."""
 from flask import Blueprint, jsonify, request, current_app
+from app.models import db
 from app.models.asset import GridAsset
-from app.extensions import db
 import os
 
 assets_bp = Blueprint('assets', __name__, url_prefix='/api/assets')

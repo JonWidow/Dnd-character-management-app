@@ -11,3 +11,4 @@ from .spell import Spell  # noqa: F401
 from .encounter import Encounter, CombatParticipant  # noqa: F401
 from .skill import Skill
 from .spell_slots import ClassSpellSlots, CharacterSpellSlot  # noqa: F401
+from .asset import GridAsset  # noqa: F401
