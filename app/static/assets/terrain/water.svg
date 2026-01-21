@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50">
+  <!-- Water terrain -->
+  <rect width="50" height="50" fill="#4169E1"/>
+  <path d="M 0 20 Q 10 15 20 20 T 40 20 T 60 20" stroke="#5F9FFF" stroke-width="2" fill="none" opacity="0.6"/>
+  <path d="M 0 35 Q 10 30 20 35 T 40 35 T 60 35" stroke="#5F9FFF" stroke-width="2" fill="none" opacity="0.6"/>
+  <circle cx="15" cy="15" r="3" fill="#87CEEB" opacity="0.4"/>
+  <circle cx="35" cy="30" r="2" fill="#87CEEB" opacity="0.4"/>
+</svg>

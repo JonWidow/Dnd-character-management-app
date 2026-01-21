@@ -1,0 +1,180 @@
+<!-- Asset Management Panel for Grid -->
+<div id="assetPanel" style="display: none; position: fixed; right: 20px; top: 80px; width: 280px; max-height: 80vh; background: white; border: 2px solid #2a5298; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); z-index: 999; overflow-y: auto; padding: 0;">
+    <!-- Header -->
+    <div style="padding: 12px 14px; border-bottom: 2px solid #e8ecf1; position: sticky; top: 0; background: white; display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0; font-size: 15px; font-weight: bold; color: #1e3c72;">
+            <i class="fas fa-palette mr-2"></i>Assets
+        </h3>
+        <button id="closeAssetPanel" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #666; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    
+    <!-- Category Filter -->
+    <div style="padding: 12px 14px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px;">CATEGORY</div>
+        <select id="assetCategoryFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+            <option value="">All Categories</option>
+        </select>
+    </div>
+    
+    <!-- Assets List -->
+    <div id="assetsList" style="padding: 8px 14px;">
+        <!-- Assets will be loaded here -->
+    </div>
+</div>
+
+<!-- Asset Context Menu -->
+<div id="assetContextMenu" style="display: none; position: fixed; background: white; border: 2px solid #2a5298; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); z-index: 1001; min-width: 160px; overflow: hidden;">
+    <div class="context-item" id="rotateAsset" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; color: #333; font-weight: 500; transition: all 0.15s ease;">
+        <i class="fas fa-redo mr-2"></i>Rotate
+    </div>
+    <div class="context-item" id="duplicateAsset" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; color: #333; font-weight: 500; transition: all 0.15s ease;">
+        <i class="fas fa-copy mr-2"></i>Duplicate
+    </div>
+    <div class="context-item danger" id="deleteAsset" style="padding: 10px 14px; cursor: pointer; color: #e74c3c; font-weight: 500; transition: all 0.15s ease;">
+        <i class="fas fa-trash mr-2"></i>Delete
+    </div>
+</div>
+
+<script>
+    // Asset panel visibility toggle
+    const assetPanelBtn = document.getElementById('toggleAssetPanel');
+    const assetPanel = document.getElementById('assetPanel');
+    const closeAssetPanelBtn = document.getElementById('closeAssetPanel');
+    
+    if (assetPanelBtn && assetPanel && closeAssetPanelBtn) {
+        assetPanelBtn.addEventListener('click', () => {
+            assetPanel.style.display = assetPanel.style.display === 'none' ? 'block' : 'none';
+            if (assetPanel.style.display === 'block') {
+                loadAssets();
+            }
+        });
+        
+        closeAssetPanelBtn.addEventListener('click', () => {
+            assetPanel.style.display = 'none';
+        });
+    }
+    
+    // Load assets from API
+    async function loadAssets() {
+        try {
+            const response = await fetch('/api/assets/list');
+            const assets = await response.json();
+            
+            // Load categories
+            const categoryFilter = document.getElementById('assetCategoryFilter');
+            const categories = [...new Set(assets.map(a => a.category))];
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat;
+                option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+                categoryFilter.appendChild(option);
+            });
+            
+            // Display assets
+            displayAssets(assets);
+            
+            // Category filter change
+            categoryFilter.addEventListener('change', (e) => {
+                const filtered = e.target.value 
+                    ? assets.filter(a => a.category === e.target.value)
+                    : assets;
+                displayAssets(filtered);
+            });
+        } catch (error) {
+            console.error('Error loading assets:', error);
+        }
+    }
+    
+    function displayAssets(assets) {
+        const assetsList = document.getElementById('assetsList');
+        assetsList.innerHTML = '';
+        
+        assets.forEach(asset => {
+            const assetEl = document.createElement('div');
+            assetEl.style.cssText = `
+                padding: 10px;
+                margin-bottom: 8px;
+                background: #f9f9f9;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            `;
+            
+            assetEl.innerHTML = `
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="width: 40px; height: 40px; background: ${asset.color_tag}; border-radius: 4px; flex-shrink: 0; border: 1px solid #ccc;"></div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; font-size: 12px; color: #333;">${asset.name}</div>
+                        <div style="font-size: 11px; color: #666;">${asset.description}</div>
+                    </div>
+                </div>
+            `;
+            
+            assetEl.addEventListener('mouseenter', () => {
+                assetEl.style.background = '#f0f4ff';
+                assetEl.style.borderColor = '#2a5298';
+            });
+            
+            assetEl.addEventListener('mouseleave', () => {
+                assetEl.style.background = '#f9f9f9';
+                assetEl.style.borderColor = '#e0e0e0';
+            });
+            
+            assetEl.addEventListener('click', () => {
+                window.selectedAsset = asset;
+                assetsList.parentElement.style.display = 'none';
+                alert(`Selected: ${asset.name}\nClick on the grid to place it (or drag from here)`);
+            });
+            
+            // Drag support
+            assetEl.draggable = true;
+            assetEl.addEventListener('dragstart', (e) => {
+                e.dataTransfer.setData('assetId', asset.id);
+                e.dataTransfer.setData('assetData', JSON.stringify(asset));
+                window.draggedAsset = asset;
+            });
+            
+            assetsList.appendChild(assetEl);
+        });
+    }
+    
+    // Context menu handlers
+    const contextMenu = document.getElementById('assetContextMenu');
+    const rotateBtn = document.getElementById('rotateAsset');
+    const duplicateBtn = document.getElementById('duplicateAsset');
+    const deleteBtn = document.getElementById('deleteAsset');
+    
+    rotateBtn?.addEventListener('click', () => {
+        if (contextMenu.currentAsset) {
+            contextMenu.currentAsset.rotate((contextMenu.currentAsset.rotation() || 0) + 45);
+            assetLayer?.draw?.();
+            contextMenu.style.display = 'none';
+        }
+    });
+    
+    duplicateBtn?.addEventListener('click', () => {
+        if (contextMenu.currentAsset) {
+            const asset = contextMenu.currentAsset;
+            // Logic to duplicate asset
+            contextMenu.style.display = 'none';
+        }
+    });
+    
+    deleteBtn?.addEventListener('click', () => {
+        if (contextMenu.currentAsset) {
+            contextMenu.currentAsset.destroy();
+            assetLayer?.draw?.();
+            contextMenu.style.display = 'none';
+        }
+    });
+    
+    // Close context menu on click elsewhere
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#assetContextMenu')) {
+            contextMenu.style.display = 'none';
+        }
+    });
+</script>

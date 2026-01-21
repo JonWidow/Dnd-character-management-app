@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50">
+  <!-- Stone floor with grid pattern -->
+  <defs>
+    <pattern id="stonePattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
+      <rect width="10" height="10" fill="#888888"/>
+      <line x1="0" y1="0" x2="10" y2="10" stroke="#666666" stroke-width="0.5"/>
+      <line x1="10" y1="0" x2="0" y2="10" stroke="#666666" stroke-width="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="50" height="50" fill="url(#stonePattern)"/>
+  <rect width="50" height="50" fill="none" stroke="#555555" stroke-width="1"/>
+</svg>

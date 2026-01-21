@@ -5,6 +5,7 @@ from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceMod
 from app.models.character_struct import CharacterClassFeature, RaceFeature, SubclassFeature, SubclassModel
 from app.models.spell_slots import CharacterSpellSlot
 from app.grid import grid_bp
+from app.routes.assets import assets_bp
 from app.extensions import socketio
 from sqlalchemy import func
 import os
@@ -39,6 +40,7 @@ with app.app_context():
 
 socketio.init_app(app)
 app.register_blueprint(grid_bp)
+app.register_blueprint(assets_bp)
 
 # ---------- Jinja Filters ----------
 @app.template_filter('parse_proficiencies')
