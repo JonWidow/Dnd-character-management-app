@@ -3,80 +3,127 @@
 {% block title %}Add New Character{% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto shadow-md rounded-lg p-6" style="background-color: #fafbfc;">
-    <h1 class="text-2xl font-bold mb-4 text-blue-800">Enter New Character Information</h1>
+<div class="max-w-2xl mx-auto px-6 py-8">
+    <div class="mb-8">
+        <a href="{{ url_for('characters') }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4">
+            <i class="fas fa-arrow-left mr-2"></i>Back to Characters
+        </a>
+        <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">Create New Character</h1>
+        <p class="text-gray-600 mt-2">Fill in the information below to create your new D&D character</p>
+    </div>
 
-    <form action="{{ url_for('add_character') }}" method="post" class="space-y-4">
-        <div>
-            <label for="name" class="block font-medium">Name:</label>
-            <input type="text" id="name" name="name" required class="w-full border rounded p-2">
-        </div>
+    <div class="bg-white rounded-lg shadow-md p-8">
+        <form action="{{ url_for('add_character') }}" method="post" class="space-y-8">
+            <!-- Character Name -->
+            <div>
+                <label for="name" class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-id-card mr-2 text-blue-600"></i>Character Name
+                </label>
+                <input type="text" id="name" name="name" required 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                       placeholder="Enter character name">
+            </div>
 
-        <div>
-            <label for="char_class" class="block font-medium">Class:</label>
-            <select id="char_class" name="char_class" required class="w-full border rounded p-2">
-                <option value="">-- Select a Class --</option>
-                {% for cls in classes %}
-                    <option value="{{ cls.name }}" data-class-id="{{ cls.id }}">{{ cls.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div>
-            <label for="race" class="block font-medium">Race:</label>
-            <select id="race" name="race" required class="w-full border rounded p-2">
-                <option value="">-- Select a Race --</option>
-                {% for race in races %}
-                    <option value="{{ race.name }}">{{ race.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div>
-            <label for="level" class="block font-medium">Level:</label>
-            <input type="number" id="level" name="level" min="1" value="1" class="w-24 border rounded p-2">
-        </div>
-
-        <div id="subclass_wrapper" style="display: none;">
-            <label for="subclass_id" class="block font-medium">Subclass:</label>
-            <select id="subclass_id" name="subclass_id" class="w-full border rounded p-2">
-                <option value="">-- Select a Subclass --</option>
-            </select>
-            <p id="subclass_note" class="text-sm text-gray-600 mt-1"></p>
-        </div>
-
-        <fieldset class="border border-gray-300 p-4 rounded">
-            <legend class="font-medium">Ability Scores</legend>
-            <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-2">
+            <!-- Class and Race Row -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label for="str_sc">Strength:</label>
-                    <input type="number" id="str_sc" name="str_sc" value="10" class="w-full border rounded p-1">
+                    <label for="char_class" class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-book mr-2 text-blue-600"></i>Class
+                    </label>
+                    <select id="char_class" name="char_class" required 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+                        <option value="">-- Select a Class --</option>
+                        {% for cls in classes %}
+                            <option value="{{ cls.name }}" data-class-id="{{ cls.id }}">{{ cls.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
+
                 <div>
-                    <label for="dex_sc">Dexterity:</label>
-                    <input type="number" id="dex_sc" name="dex_sc" value="10" class="w-full border rounded p-1">
-                </div>
-                <div>
-                    <label for="con_sc">Constitution:</label>
-                    <input type="number" id="con_sc" name="con_sc" value="10" class="w-full border rounded p-1">
-                </div>
-                <div>
-                    <label for="int_sc">Intelligence:</label>
-                    <input type="number" id="int_sc" name="int_sc" value="10" class="w-full border rounded p-1">
-                </div>
-                <div>
-                    <label for="wis_sc">Wisdom:</label>
-                    <input type="number" id="wis_sc" name="wis_sc" value="10" class="w-full border rounded p-1">
-                </div>
-                <div>
-                    <label for="cha_sc">Charisma:</label>
-                    <input type="number" id="cha_sc" name="cha_sc" value="10" class="w-full border rounded p-1">
+                    <label for="race" class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-dragon mr-2 text-blue-600"></i>Race
+                    </label>
+                    <select id="race" name="race" required 
+                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+                        <option value="">-- Select a Race --</option>
+                        {% for race in races %}
+                            <option value="{{ race.name }}">{{ race.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
-        </fieldset>
 
-        <button type="submit" class="bg-blue-800 text-white px-4 py-2 rounded hover:bg-blue-700 mt-4">Submit</button>
-    </form>
+            <!-- Level -->
+            <div>
+                <label for="level" class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-chart-line mr-2 text-blue-600"></i>Level
+                </label>
+                <input type="number" id="level" name="level" min="1" value="1" 
+                       class="w-20 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+            </div>
+
+            <!-- Subclass Selection -->
+            <div id="subclass_wrapper" style="display: none;">
+                <label for="subclass_id" class="block text-sm font-semibold text-gray-700 mb-2">
+                    <i class="fas fa-crown mr-2 text-blue-600"></i>Subclass
+                </label>
+                <select id="subclass_id" name="subclass_id" 
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition">
+                    <option value="">-- Select a Subclass --</option>
+                </select>
+                <p id="subclass_note" class="text-sm text-gray-600 mt-2"></p>
+            </div>
+
+            <!-- Ability Scores -->
+            <fieldset class="border-2 border-blue-200 p-6 rounded-lg bg-blue-50">
+                <legend class="text-sm font-semibold text-blue-800 px-2">
+                    <i class="fas fa-dice mr-2"></i>Ability Scores
+                </legend>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-4">
+                    <div>
+                        <label for="str_sc" class="block text-sm font-medium text-gray-700 mb-1">Strength</label>
+                        <input type="number" id="str_sc" name="str_sc" value="10" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="dex_sc" class="block text-sm font-medium text-gray-700 mb-1">Dexterity</label>
+                        <input type="number" id="dex_sc" name="dex_sc" value="10" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="con_sc" class="block text-sm font-medium text-gray-700 mb-1">Constitution</label>
+                        <input type="number" id="con_sc" name="con_sc" value="10" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="int_sc" class="block text-sm font-medium text-gray-700 mb-1">Intelligence</label>
+                        <input type="number" id="int_sc" name="int_sc" value="10" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="wis_sc" class="block text-sm font-medium text-gray-700 mb-1">Wisdom</label>
+                        <input type="number" id="wis_sc" name="wis_sc" value="10" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="cha_sc" class="block text-sm font-medium text-gray-700 mb-1">Charisma</label>
+                        <input type="number" id="cha_sc" name="cha_sc" value="10" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+                    </div>
+                </div>
+            </fieldset>
+
+            <!-- Submit Button -->
+            <div class="flex gap-4 pt-4">
+                <button type="submit" class="flex-1 bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold py-3 rounded-lg hover:shadow-lg transition duration-200 transform hover:scale-105">
+                    <i class="fas fa-plus mr-2"></i>Create Character
+                </button>
+                <a href="{{ url_for('characters') }}" class="px-6 py-3 bg-gray-200 text-gray-800 rounded-lg font-semibold hover:bg-gray-300 transition text-center">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
 </div>
 
 <script>
@@ -127,4 +174,5 @@ async function updateSubclassDropdown() {
 // Update subclass dropdown when class or level changes
 document.getElementById('char_class').addEventListener('change', updateSubclassDropdown);
 document.getElementById('level').addEventListener('change', updateSubclassDropdown);
-</script>{% endblock %}
+</script>
+{% endblock %}

@@ -3,68 +3,125 @@
 {% block title %}Admin Panel{% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-    <h1 class="text-3xl font-bold mb-8 text-blue-800">Admin Panel</h1>
+<div class="max-w-7xl mx-auto px-6 py-8">
+    <div class="mb-12">
+        <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 mb-2">Admin Panel</h1>
+        <p class="text-gray-600">System overview and management tools</p>
+    </div>
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
-            <h3 class="text-gray-600 text-sm font-medium">Total Users</h3>
-            <p class="text-3xl font-bold text-green-800">{{ stats.total_users }}</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-blue-600 hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-semibold">Total Users</p>
+                    <p class="text-3xl font-bold text-blue-800 mt-2">{{ stats.total_users }}</p>
+                </div>
+                <i class="fas fa-users text-4xl text-blue-200"></i>
+            </div>
         </div>
-        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
-            <h3 class="text-gray-600 text-sm font-medium">Total Characters</h3>
-            <p class="text-3xl font-bold text-blue-800">{{ stats.total_characters }}</p>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-green-600 hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-semibold">Total Characters</p>
+                    <p class="text-3xl font-bold text-green-800 mt-2">{{ stats.total_characters }}</p>
+                </div>
+                <i class="fas fa-hat-wizard text-4xl text-green-200"></i>
+            </div>
         </div>
-        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
-            <h3 class="text-gray-600 text-sm font-medium">Character Classes</h3>
-            <p class="text-3xl font-bold text-blue-800">{{ stats.total_classes }}</p>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-purple-600 hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-semibold">Character Classes</p>
+                    <p class="text-3xl font-bold text-purple-800 mt-2">{{ stats.total_classes }}</p>
+                </div>
+                <i class="fas fa-book text-4xl text-purple-200"></i>
+            </div>
         </div>
-        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
-            <h3 class="text-gray-600 text-sm font-medium">Subclasses</h3>
-            <p class="text-3xl font-bold text-blue-800">{{ stats.total_subclasses }}</p>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-orange-600 hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-semibold">Subclasses</p>
+                    <p class="text-3xl font-bold text-orange-800 mt-2">{{ stats.total_subclasses }}</p>
+                </div>
+                <i class="fas fa-crown text-4xl text-orange-200"></i>
+            </div>
         </div>
-        <div class="rounded-lg shadow p-6" style="background-color: #fafbfc;">
-            <h3 class="text-gray-600 text-sm font-medium">Races</h3>
-            <p class="text-3xl font-bold text-blue-800">{{ stats.total_races }}</p>
+
+        <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-red-600 hover:shadow-lg transition">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-gray-600 text-sm font-semibold">Races</p>
+                    <p class="text-3xl font-bold text-red-800 mt-2">{{ stats.total_races }}</p>
+                </div>
+                <i class="fas fa-dragon text-4xl text-red-200"></i>
+            </div>
         </div>
     </div>
 
     <!-- Admin Menu -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <!-- User Management -->
-        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
-            <h2 class="text-2xl font-bold mb-4 text-blue-800">User Management</h2>
-            <p class="text-gray-600 mb-4">Manage user accounts, roles, permissions, and account resets.</p>
-            <a href="{{ url_for('admin_users') }}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Manage Users</a>
+        <div class="bg-white rounded-lg shadow-md p-8 border-t-4 border-blue-600 hover:shadow-lg transition">
+            <div class="flex items-start mb-4">
+                <i class="fas fa-users text-3xl text-blue-600 mr-4"></i>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">User Management</h2>
+                    <p class="text-sm text-gray-500 mt-1">Manage accounts and roles</p>
+                </div>
+            </div>
+            <p class="text-gray-600 mb-6">Manage user accounts, roles, permissions, and account resets.</p>
+            <a href="{{ url_for('admin_users') }}" class="inline-flex items-center bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition">
+                <i class="fas fa-cog mr-2"></i>Manage Users
+            </a>
         </div>
 
         <!-- Classes Management -->
-        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
-            <h2 class="text-2xl font-bold mb-4 text-blue-800">Character Classes</h2>
-            <p class="text-gray-600 mb-4">Manage character classes, proficiencies, spell casting abilities, and subclass unlock levels.</p>
-            <a href="{{ url_for('admin_classes') }}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Manage Classes</a>
+        <div class="bg-white rounded-lg shadow-md p-8 border-t-4 border-purple-600 hover:shadow-lg transition">
+            <div class="flex items-start mb-4">
+                <i class="fas fa-book text-3xl text-purple-600 mr-4"></i>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Character Classes</h2>
+                    <p class="text-sm text-gray-500 mt-1">Configure classes and abilities</p>
+                </div>
+            </div>
+            <p class="text-gray-600 mb-6">Manage character classes, proficiencies, spell casting abilities, and subclass unlock levels.</p>
+            <a href="{{ url_for('admin_classes') }}" class="inline-flex items-center bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition">
+                <i class="fas fa-cog mr-2"></i>Manage Classes
+            </a>
         </div>
 
         <!-- Subclasses Management -->
-        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
-            <h2 class="text-2xl font-bold mb-4 text-blue-800">Subclasses</h2>
-            <p class="text-gray-600 mb-4">Add, edit, or delete character subclasses. Manage subclass unlock levels and descriptions.</p>
-            <a href="{{ url_for('admin_subclasses') }}" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Manage Subclasses</a>
+        <div class="bg-white rounded-lg shadow-md p-8 border-t-4 border-orange-600 hover:shadow-lg transition">
+            <div class="flex items-start mb-4">
+                <i class="fas fa-crown text-3xl text-orange-600 mr-4"></i>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Subclasses</h2>
+                    <p class="text-sm text-gray-500 mt-1">Customize specializations</p>
+                </div>
+            </div>
+            <p class="text-gray-600 mb-6">Add, edit, or delete character subclasses. Manage subclass unlock levels and descriptions.</p>
+            <a href="{{ url_for('admin_subclasses') }}" class="inline-flex items-center bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transition">
+                <i class="fas fa-cog mr-2"></i>Manage Subclasses
+            </a>
         </div>
 
-        <!-- Races Management (Placeholder) -->
-        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
-            <h2 class="text-2xl font-bold mb-4 text-blue-800">Races</h2>
-            <p class="text-gray-600 mb-4">Manage player character races, ability bonuses, and racial features.</p>
-            <button disabled class="inline-block bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed">Coming Soon</button>
-        </div>
-
-        <!-- Database (Placeholder) -->
-        <div class="rounded-lg shadow-lg p-6" style="background-color: #fafbfc;">
-            <h2 class="text-2xl font-bold mb-4 text-blue-800">Database</h2>
-            <p class="text-gray-600 mb-4">Database maintenance, backups, and data integrity checks.</p>
-            <button disabled class="inline-block bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed">Coming Soon</button>
+        <!-- Races Management -->
+        <div class="bg-white rounded-lg shadow-md p-8 border-t-4 border-gray-400 opacity-75">
+            <div class="flex items-start mb-4">
+                <i class="fas fa-dragon text-3xl text-gray-400 mr-4"></i>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-600">Races</h2>
+                    <p class="text-sm text-gray-500 mt-1">Coming soon</p>
+                </div>
+            </div>
+            <p class="text-gray-600 mb-6">Manage player character races, ability bonuses, and racial features.</p>
+            <button disabled class="inline-flex items-center bg-gray-300 text-gray-600 px-6 py-2 rounded-lg font-semibold cursor-not-allowed">
+                <i class="fas fa-lock mr-2"></i>Coming Soon
+            </button>
         </div>
     </div>
 </div>
