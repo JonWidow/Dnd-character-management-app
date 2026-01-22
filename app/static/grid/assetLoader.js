@@ -130,12 +130,21 @@ class AssetLoader {
                         }
                         
                         // Create Konva image from canvas
+                        // Calculate offsets: odd dimensions center in square, even center on lines
+                        const CELL_SIZE = 50;
+                        const widthSquares = Math.round(width / CELL_SIZE);
+                        const heightSquares = Math.round(height / CELL_SIZE);
+                        const offsetX = widthSquares % 2 === 1 ? width / 2 : 0;
+                        const offsetY = heightSquares % 2 === 1 ? height / 2 : 0;
+                        
                         const konvaImage = new Konva.Image({
                             image: canvas,
                             x: x,
                             y: y,
                             width: width,
                             height: height,
+                            offsetX: offsetX,
+                            offsetY: offsetY,
                             draggable: true,
                             name: 'asset'
                         });

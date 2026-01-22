@@ -28,15 +28,71 @@
 </div>
 
 <!-- Asset Context Menu -->
-<div id="assetContextMenu" style="display: none; position: fixed; background: white; border: 2px solid #2a5298; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); z-index: 1001; min-width: 160px; overflow: hidden;">
+<div id="assetContextMenu" style="display: none; position: fixed; background: white; border: 2px solid #2a5298; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); z-index: 1001; min-width: 160px; overflow: visible; user-select: none;" data-draggable-header="true">
+    <!-- Drag Handle Header -->
+    <div id="assetContextMenuHeader" style="padding: 8px 14px; border-bottom: 1px solid #f0f0f0; background: #f9f9f9; cursor: grab; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #666; font-weight: 600; user-select: none;">
+        <i class="fas fa-grip-vertical" style="font-size: 10px; opacity: 0.6;"></i>
+        Asset Menu
+    </div>
+    
     <div class="context-item" id="rotateAsset" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; color: #333; font-weight: 500; transition: all 0.15s ease;">
         <i class="fas fa-redo mr-2"></i>Rotate
     </div>
+    
+    <!-- Resize Dropdown -->
+    <div style="border-bottom: 1px solid #f0f0f0;">
+        <div id="resizeToggle" class="context-item" style="padding: 10px 14px; cursor: pointer; color: #333; font-weight: 500; transition: all 0.15s ease; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fas fa-expand mr-2"></i>Resize</span>
+            <i class="fas fa-chevron-down" style="font-size: 11px; transition: transform 0.2s ease; transform: rotate(0deg);"></i>
+        </div>
+        <div id="resizeDropdown" style="background: #f9f9f9; padding: 8px; display: none; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+            <button class="resize-btn" data-size="1" style="padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; transition: all 0.15s ease; font-weight: 500; color: #333;">1x1</button>
+            <button class="resize-btn" data-size="2" style="padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; transition: all 0.15s ease; font-weight: 500; color: #333;">2x2</button>
+            <button class="resize-btn" data-size="3" style="padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; transition: all 0.15s ease; font-weight: 500; color: #333;">3x3</button>
+            <button class="resize-btn" data-size="4" style="padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; transition: all 0.15s ease; font-weight: 500; color: #333;">4x4</button>
+            <button class="resize-btn" data-size="5" style="padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; transition: all 0.15s ease; font-weight: 500; color: #333;">5x5</button>
+            <button class="resize-btn" data-size="custom" style="padding: 6px; font-size: 11px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; transition: all 0.15s ease; font-weight: 500; color: #333;">Custom</button>
+        </div>
+    </div>
+    
     <div class="context-item" id="duplicateAsset" style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f0f0f0; color: #333; font-weight: 500; transition: all 0.15s ease;">
         <i class="fas fa-copy mr-2"></i>Duplicate
     </div>
     <div class="context-item danger" id="deleteAsset" style="padding: 10px 14px; cursor: pointer; color: #e74c3c; font-weight: 500; transition: all 0.15s ease;">
         <i class="fas fa-trash mr-2"></i>Delete
+    </div>
+</div>
+
+<style>
+    .resize-btn:hover {
+        background-color: #e8ecf1 !important;
+        border-color: #2a5298 !important;
+    }
+    
+    .context-item:hover {
+        background-color: #f0f4ff;
+    }
+    
+    #customWidth, #customHeight {
+        color: #333 !important;
+        -webkit-text-fill-color: #333 !important;
+    }
+</style>
+
+<!-- Custom Resize Dialog -->
+<div id="customResizeDialog" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border: 2px solid #2a5298; border-radius: 8px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); z-index: 1002; padding: 20px; min-width: 300px;">
+    <h3 style="margin-bottom: 15px; color: #333; font-size: 16px;">Custom Resize</h3>
+    <div style="margin-bottom: 10px;">
+        <label style="display: block; margin-bottom: 5px; color: #666; font-weight: 500;">Width (squares)</label>
+        <input type="number" id="customWidth" min="1" value="1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; color: #333 !important;">
+    </div>
+    <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; color: #666; font-weight: 500;">Height (squares)</label>
+        <input type="number" id="customHeight" min="1" value="1" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; color: #333 !important;">
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <button id="confirmCustomResize" style="flex: 1; padding: 10px; background: #2a5298; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Resize</button>
+        <button id="cancelCustomResize" style="flex: 1; padding: 10px; background: #ccc; color: #333; border: none; border-radius: 4px; cursor: pointer; font-weight: 500;">Cancel</button>
     </div>
 </div>
 
@@ -287,40 +343,108 @@
         });
     }
     
-    // Context menu handlers
-    const contextMenu = document.getElementById('assetContextMenu');
-    const rotateBtn = document.getElementById('rotateAsset');
-    const duplicateBtn = document.getElementById('duplicateAsset');
-    const deleteBtn = document.getElementById('deleteAsset');
-    
-    rotateBtn?.addEventListener('click', () => {
-        if (contextMenu.currentAsset) {
-            contextMenu.currentAsset.rotate((contextMenu.currentAsset.rotation() || 0) + 45);
-            assetLayer?.draw?.();
-            contextMenu.style.display = 'none';
-        }
-    });
-    
-    duplicateBtn?.addEventListener('click', () => {
-        if (contextMenu.currentAsset) {
-            const asset = contextMenu.currentAsset;
-            // Logic to duplicate asset
-            contextMenu.style.display = 'none';
-        }
-    });
-    
-    deleteBtn?.addEventListener('click', () => {
-        if (contextMenu.currentAsset) {
-            contextMenu.currentAsset.destroy();
-            assetLayer?.draw?.();
-            contextMenu.style.display = 'none';
-        }
-    });
-    
     // Close context menu on click elsewhere
     document.addEventListener('click', (e) => {
-        if (!e.target.closest('#assetContextMenu')) {
+        const contextMenu = document.getElementById('assetContextMenu');
+        if (contextMenu && !e.target.closest('#assetContextMenu')) {
             contextMenu.style.display = 'none';
         }
+        // Close custom resize dialog on click outside
+        const customDialog = document.getElementById('customResizeDialog');
+        if (customDialog && !e.target.closest('#customResizeDialog')) {
+            customDialog.style.display = 'none';
+        }
     });
+
+    // Close custom resize dialog on backdrop click
+    const customDialog = document.getElementById('customResizeDialog');
+    if (customDialog) {
+        customDialog.addEventListener('click', (e) => {
+            if (e.target === customDialog) {
+                customDialog.style.display = 'none';
+            }
+        });
+    }
+
+    // Make asset context menu draggable
+    const assetContextMenu = document.getElementById('assetContextMenu');
+    const assetContextMenuHeader = document.getElementById('assetContextMenuHeader');
+    
+    if (assetContextMenu && assetContextMenuHeader) {
+        let isDragging = false;
+        let dragOffsetX = 0;
+        let dragOffsetY = 0;
+
+        assetContextMenuHeader.style.cursor = 'grab';
+
+        function startDrag(clientX, clientY) {
+            isDragging = true;
+            const rect = assetContextMenu.getBoundingClientRect();
+            dragOffsetX = clientX - rect.left;
+            dragOffsetY = clientY - rect.top;
+            assetContextMenuHeader.style.cursor = 'grabbing';
+        }
+
+        function moveDrag(clientX, clientY) {
+            if (isDragging) {
+                let newX = clientX - dragOffsetX;
+                let newY = clientY - dragOffsetY;
+                const menuWidth = assetContextMenu.offsetWidth || 200;
+                const menuHeight = assetContextMenu.offsetHeight || 300;
+                
+                // Keep menu within viewport
+                if (newX + menuWidth > window.innerWidth) {
+                    newX = window.innerWidth - menuWidth - 10;
+                }
+                if (newX < 10) {
+                    newX = 10;
+                }
+                
+                if (newY + menuHeight > window.innerHeight) {
+                    newY = window.innerHeight - menuHeight - 10;
+                }
+                if (newY < 10) {
+                    newY = 10;
+                }
+                
+                assetContextMenu.style.left = newX + 'px';
+                assetContextMenu.style.top = newY + 'px';
+            }
+        }
+
+        function endDrag() {
+            isDragging = false;
+            assetContextMenuHeader.style.cursor = 'grab';
+        }
+
+        // Mouse events
+        assetContextMenuHeader.addEventListener('mousedown', (e) => {
+            startDrag(e.clientX, e.clientY);
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            moveDrag(e.clientX, e.clientY);
+        });
+
+        document.addEventListener('mouseup', endDrag);
+
+        // Touch events for mobile
+        assetContextMenuHeader.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (isDragging && e.touches.length > 0) {
+                moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+
+        document.addEventListener('touchend', (e) => {
+            endDrag();
+        });
+    }
 </script>

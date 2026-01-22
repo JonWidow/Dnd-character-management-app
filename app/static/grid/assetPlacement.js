@@ -10,6 +10,7 @@ export class AssetPlacementHandler {
         this.assetLoader = null;
         this.placedAssets = new Map(); // Map of asset ID -> Konva object
         this.assetIdCounter = 0;
+        this.assetsLoaded = false; // Prevent duplicate loads
         
         this.setupEventListeners();
     }
@@ -112,13 +113,14 @@ export class AssetPlacementHandler {
     async placeAsset(x, y, assetPath = null) {
         console.log('[AssetPlacement] placeAsset called with:', {x, y, assetPath});
         
-        // Snap to grid (50px cells) - assets snap to top-left corner of cells
+        // Snap to grid (50px cells) - assets snap to center of cells for 1x1
         const CELL_SIZE = 50;
-        const gridX = Math.round(x / CELL_SIZE);
-        const gridY = Math.round(y / CELL_SIZE);
-        const snappedX = gridX * CELL_SIZE;
-        const snappedY = gridY * CELL_SIZE;
-        console.log('[AssetPlacement] Snapped from (', x, ',', y, ') to grid cell (', gridX, ',', gridY, ') = pixels (', snappedX, ',', snappedY, ')');
+        const HALF_CELL = CELL_SIZE / 2;
+        const gridX = Math.round((x - HALF_CELL) / CELL_SIZE);
+        const gridY = Math.round((y - HALF_CELL) / CELL_SIZE);
+        const snappedX = gridX * CELL_SIZE + HALF_CELL;
+        const snappedY = gridY * CELL_SIZE + HALF_CELL;
+        console.log('[AssetPlacement] Snapped from (', x, ',', y, ') to grid cell center (', snappedX, ',', snappedY, ')');
         
         const path = assetPath || this.gridModule.selectedAssetPath;
         
@@ -167,6 +169,7 @@ export class AssetPlacementHandler {
                 const assetId = this.assetIdCounter++;
                 this.placedAssets.set(assetId, konvaImage);
                 konvaImage.assetId = assetId;
+                konvaImage.assetPath = path;
                 
                 console.log(`[AssetPlacement] Asset placed with ID: ${assetId}`);
                 
@@ -211,12 +214,36 @@ export class AssetPlacementHandler {
 
         // Snap to grid on drag end and save position
         konvaImage.on('dragend', () => {
-            // Snap to grid
+            // Snap to grid based on asset dimensions
             const CELL_SIZE = 50;
-            const gridX = Math.round(konvaImage.x() / CELL_SIZE);
-            const gridY = Math.round(konvaImage.y() / CELL_SIZE);
-            const snappedX = gridX * CELL_SIZE;
-            const snappedY = gridY * CELL_SIZE;
+            const widthSquares = Math.round(konvaImage.width() / CELL_SIZE);
+            const heightSquares = Math.round(konvaImage.height() / CELL_SIZE);
+            
+            // For odd dimensions: snap to cell centers (25, 75, 125, ...)
+            // For even dimensions: snap to grid lines (0, 50, 100, ...)
+            let snappedX, snappedY;
+            
+            if (widthSquares % 2 === 1) {
+                // Odd: center in square
+                const HALF_CELL = CELL_SIZE / 2;
+                const gridX = Math.round((konvaImage.x() - HALF_CELL) / CELL_SIZE);
+                snappedX = gridX * CELL_SIZE + HALF_CELL;
+            } else {
+                // Even: center on line
+                const gridX = Math.round(konvaImage.x() / CELL_SIZE);
+                snappedX = gridX * CELL_SIZE;
+            }
+            
+            if (heightSquares % 2 === 1) {
+                // Odd: center in square
+                const HALF_CELL = CELL_SIZE / 2;
+                const gridY = Math.round((konvaImage.y() - HALF_CELL) / CELL_SIZE);
+                snappedY = gridY * CELL_SIZE + HALF_CELL;
+            } else {
+                // Even: center on line
+                const gridY = Math.round(konvaImage.y() / CELL_SIZE);
+                snappedY = gridY * CELL_SIZE;
+            }
             
             konvaImage.x(snappedX);
             konvaImage.y(snappedY);
@@ -244,11 +271,26 @@ export class AssetPlacementHandler {
         menu.style.left = x + 'px';
         menu.style.top = y + 'px';
         menu.currentAsset = asset;
+        
+        // Close resize dropdown when menu opens
+        const resizeDropdown = menu.querySelector('#resizeDropdown');
+        if (resizeDropdown) {
+            resizeDropdown.style.display = 'none';
+        }
+        const resizeToggle = menu.querySelector('#resizeToggle');
+        const chevron = resizeToggle?.querySelector('.fa-chevron-down');
+        if (chevron) {
+            chevron.style.transform = 'rotate(0deg)';
+        }
 
         // Handle delete
         const deleteBtn = menu.querySelector('#deleteAsset');
         if (deleteBtn) {
             deleteBtn.onclick = () => {
+                // Delete from database if it has a database ID
+                if (asset.databaseId) {
+                    this.deleteAssetFromDatabase(asset.databaseId);
+                }
                 asset.destroy();
                 this.assetLayer.draw();
                 menu.style.display = 'none';
@@ -258,28 +300,188 @@ export class AssetPlacementHandler {
         // Handle rotate
         const rotateBtn = menu.querySelector('#rotateAsset');
         if (rotateBtn) {
-            rotateBtn.onclick = () => {
+            // Remove any previous handlers
+            const newRotateBtn = rotateBtn.cloneNode(true);
+            rotateBtn.parentNode.replaceChild(newRotateBtn, rotateBtn);
+            
+            newRotateBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 const currentRotation = asset.rotation() || 0;
-                asset.rotation(currentRotation + 45);
+                const newRotation = currentRotation + 45;
+                asset.rotation(newRotation);
                 this.assetLayer.draw();
+                
+                // Update in database if this asset was loaded from DB
+                if (asset.databaseId) {
+                    this.updateAssetRotationInDatabase(asset.databaseId, newRotation);
+                }
+                
                 menu.style.display = 'none';
             };
         }
 
+        // Handle resize dropdown toggle
+        if (resizeToggle) {
+            resizeToggle.onclick = (e) => {
+                e.stopPropagation();
+                const isShowing = resizeDropdown.style.display === 'grid';
+                resizeDropdown.style.display = isShowing ? 'none' : 'grid';
+                
+                // Animate chevron
+                const chevron = resizeToggle.querySelector('.fa-chevron-down');
+                if (chevron) {
+                    chevron.style.transform = isShowing ? 'rotate(0deg)' : 'rotate(180deg)';
+                }
+            };
+        }
+
+        // Handle resize buttons (1x1, 2x2, 3x3, etc.)
+        const resizeButtons = menu.querySelectorAll('.resize-btn');
+        resizeButtons.forEach(btn => {
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                const size = btn.getAttribute('data-size');
+                
+                if (size === 'custom') {
+                    // Show custom resize dialog
+                    this.showCustomResizeDialog(asset);
+                } else {
+                    // Resize to grid squares (50px per square)
+                    const squareSize = parseInt(size);
+                    this.resizeAsset(asset, squareSize, squareSize);
+                }
+                menu.style.display = 'none';
+            };
+        });
+
         // Handle duplicate
         const duplicateBtn = menu.querySelector('#duplicateAsset');
         if (duplicateBtn) {
-            duplicateBtn.onclick = () => {
+            duplicateBtn.onclick = async () => {
+                const newX = asset.x() + 20;
+                const newY = asset.y() + 20;
                 const clone = asset.clone({
-                    x: asset.x() + 20,
-                    y: asset.y() + 20
+                    x: newX,
+                    y: newY
                 });
                 this.addAssetInteraction(clone);
                 this.assetLayer.add(clone);
                 this.assetLayer.draw();
+                
+                // Save the duplicated asset to database with explicit position
+                const assetPath = asset.assetPath || '';
+                const width = clone.width() || 50;
+                const height = clone.height() || 50;
+                console.log('[AssetPlacement] Saving duplicated asset at position:', {x: newX, y: newY, width, height});
+                const savedData = await this.saveAssetToDatabase(assetPath, newX, newY, width, height);
+                
+                // Set the database ID on the clone so position updates are persisted
+                if (savedData && savedData.id) {
+                    clone.databaseId = savedData.id;
+                    console.log('[AssetPlacement] Set databaseId on cloned asset:', savedData.id);
+                }
+                
                 menu.style.display = 'none';
             };
         }
+    }
+
+    /**
+     * Resize an asset to specific grid square dimensions
+     * @param {Konva.Image} asset - The asset to resize
+     * @param {number} widthSquares - Width in grid squares
+     * @param {number} heightSquares - Height in grid squares
+     */
+    resizeAsset(asset, widthSquares, heightSquares) {
+        const CELL_SIZE = 50;
+        const newWidth = widthSquares * CELL_SIZE;
+        const newHeight = heightSquares * CELL_SIZE;
+        
+        console.log('[AssetPlacement] Resizing asset to', widthSquares, 'x', heightSquares, 'squares (', newWidth, 'x', newHeight, 'px)');
+        
+        // Calculate old and new offsets
+        const oldWidth = asset.width();
+        const oldHeight = asset.height();
+        const oldOffsetX = asset.offsetX();
+        const oldOffsetY = asset.offsetY();
+        
+        // For odd dimensions: center in the middle of a square
+        // For even dimensions: center on grid lines (no offset)
+        const newOffsetX = widthSquares % 2 === 1 ? newWidth / 2 : 0;
+        const newOffsetY = heightSquares % 2 === 1 ? newHeight / 2 : 0;
+        
+        // Adjust position to compensate for offset change
+        // The visual position should stay the same, but the anchor point changes
+        const offsetDiffX = newOffsetX - oldOffsetX;
+        const offsetDiffY = newOffsetY - oldOffsetY;
+        
+        asset.width(newWidth);
+        asset.height(newHeight);
+        asset.offsetX(newOffsetX);
+        asset.offsetY(newOffsetY);
+        
+        // Move the asset to compensate for offset change
+        asset.x(asset.x() - offsetDiffX);
+        asset.y(asset.y() - offsetDiffY);
+        
+        // Store dimensions for later persistence
+        asset.assetWidth = newWidth;
+        asset.assetHeight = newHeight;
+        
+        this.assetLayer.draw();
+        
+        // Update in database if this asset was loaded from DB
+        if (asset.databaseId) {
+            this.updateAssetDimensionsInDatabase(asset.databaseId, newWidth, newHeight);
+        }
+    }
+
+    /**
+     * Show custom resize dialog
+     * @param {Konva.Image} asset - The asset to resize
+     */
+    showCustomResizeDialog(asset) {
+        const dialog = document.getElementById('customResizeDialog');
+        if (!dialog) return;
+        
+        const widthInput = document.getElementById('customWidth');
+        const heightInput = document.getElementById('customHeight');
+        const confirmBtn = document.getElementById('confirmCustomResize');
+        const cancelBtn = document.getElementById('cancelCustomResize');
+        
+        // Set current dimensions
+        const CELL_SIZE = 50;
+        widthInput.value = Math.max(1, Math.round(asset.width() / CELL_SIZE));
+        heightInput.value = Math.max(1, Math.round(asset.height() / CELL_SIZE));
+        
+        dialog.style.display = 'block';
+        
+        // Handle confirm
+        const handleConfirm = () => {
+            const widthSquares = parseInt(widthInput.value) || 1;
+            const heightSquares = parseInt(heightInput.value) || 1;
+            
+            this.resizeAsset(asset, widthSquares, heightSquares);
+            dialog.style.display = 'none';
+            
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        
+        // Handle cancel
+        const handleCancel = () => {
+            dialog.style.display = 'none';
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        
+        // Focus width input
+        widthInput.focus();
+        widthInput.select();
     }
 
     /**
@@ -316,12 +518,15 @@ export class AssetPlacementHandler {
      * @param {string} assetPath - Path to the asset SVG
      * @param {number} x - X coordinate
      * @param {number} y - Y coordinate
+     * @param {number} width - Asset width in pixels (optional, defaults to 50)
+     * @param {number} height - Asset height in pixels (optional, defaults to 50)
+     * @param {number} rotation - Asset rotation in degrees (optional, defaults to 0)
      */
-    async saveAssetToDatabase(assetPath, x, y) {
+    async saveAssetToDatabase(assetPath, x, y, width = 50, height = 50, rotation = 0) {
         try {
             // Get grid code from URL (path format: /grid/{code})
             const gridCode = window.location.pathname.split('/').pop();
-            console.log('[AssetPlacement] Saving asset with grid code:', gridCode, 'path:', assetPath, 'coords:', {x, y});
+            console.log('[AssetPlacement] Saving asset with grid code:', gridCode, 'path:', assetPath, 'coords:', {x, y, width, height, rotation});
             
             const response = await fetch('/api/assets/placed', {
                 method: 'POST',
@@ -333,9 +538,9 @@ export class AssetPlacementHandler {
                     asset_path: assetPath,
                     x: x,
                     y: y,
-                    width: 50,
-                    height: 50,
-                    rotation: 0
+                    width: width,
+                    height: height,
+                    rotation: rotation
                 })
             });
             
@@ -346,6 +551,7 @@ export class AssetPlacementHandler {
             
             const data = await response.json();
             console.log('[AssetPlacement] Asset saved to database:', data);
+            return data;
         } catch (error) {
             console.error('[AssetPlacement] Error saving asset to database:', error);
         }
@@ -385,10 +591,103 @@ export class AssetPlacementHandler {
     }
 
     /**
+     * Update an asset's dimensions in the database
+     * @param {number} assetId - Database ID of the asset
+     * @param {number} width - New width in pixels
+     * @param {number} height - New height in pixels
+     */
+    async updateAssetDimensionsInDatabase(assetId, width, height) {
+        try {
+            console.log('[AssetPlacement] Updating asset dimensions in database:', {assetId, width, height});
+            
+            const response = await fetch(`/api/assets/placed/${assetId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    width: width,
+                    height: height
+                })
+            });
+            
+            if (!response.ok) {
+                console.error('[AssetPlacement] Failed to update asset dimensions:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            console.log('[AssetPlacement] Asset dimensions updated in database:', data);
+        } catch (error) {
+            console.error('[AssetPlacement] Error updating asset dimensions in database:', error);
+        }
+    }
+
+    /**
+     * Update an asset's rotation in the database
+     * @param {number} assetId - Database ID of the asset
+     * @param {number} rotation - New rotation in degrees
+     */
+    async updateAssetRotationInDatabase(assetId, rotation) {
+        try {
+            console.log('[AssetPlacement] Updating asset rotation in database:', {assetId, rotation});
+            
+            const response = await fetch(`/api/assets/placed/${assetId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    rotation: rotation
+                })
+            });
+            
+            if (!response.ok) {
+                console.error('[AssetPlacement] Failed to update asset rotation:', response.status);
+                return;
+            }
+            
+            const data = await response.json();
+            console.log('[AssetPlacement] Asset rotation updated in database:', data);
+        } catch (error) {
+            console.error('[AssetPlacement] Error updating asset rotation in database:', error);
+        }
+    }
+
+    /**
+     * Delete an asset from the database
+     * @param {number} assetId - Database ID of the asset to delete
+     */
+    async deleteAssetFromDatabase(assetId) {
+        try {
+            console.log('[AssetPlacement] Deleting asset from database:', assetId);
+            
+            const response = await fetch(`/api/assets/placed/${assetId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                console.error('[AssetPlacement] Failed to delete asset:', response.status);
+                return;
+            }
+            
+            console.log('[AssetPlacement] Asset deleted from database:', assetId);
+        } catch (error) {
+            console.error('[AssetPlacement] Error deleting asset from database:', error);
+        }
+    }
+
+    /**
      * Load placed assets from database for this grid
      * @param {string} gridCode - The grid code
      */
     async loadPlacedAssets(gridCode) {
+        // Prevent duplicate loads
+        if (this.assetsLoaded) {
+            console.log('[AssetPlacement] Assets already loaded, skipping');
+            return;
+        }
+        
         try {
             console.log('[AssetPlacement] Loading placed assets for grid:', gridCode);
             
@@ -419,7 +718,13 @@ export class AssetPlacementHandler {
                         const assetId = this.assetIdCounter++;
                         this.placedAssets.set(assetId, konvaImage);
                         konvaImage.assetId = assetId;
+                        konvaImage.assetPath = assetData.asset_path;
                         konvaImage.databaseId = assetData.id;
+                        
+                        // Restore rotation from database
+                        if (assetData.rotation) {
+                            konvaImage.rotation(assetData.rotation);
+                        }
                         
                         console.log('[AssetPlacement] Loaded asset with ID:', assetId);
                     }
@@ -429,6 +734,7 @@ export class AssetPlacementHandler {
             }
             
             this.assetLayer.draw();
+            this.assetsLoaded = true;
             console.log('[AssetPlacement] All assets loaded and drawn');
         } catch (error) {
             console.error('[AssetPlacement] Error loading placed assets:', error);
