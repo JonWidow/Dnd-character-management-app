@@ -425,6 +425,13 @@ export class AssetPlacementHandler {
         asset.x(asset.x() - offsetDiffX);
         asset.y(asset.y() - offsetDiffY);
         
+        // Add visual stroke to show size - scales with asset size
+        // Formula: for 1x1 no stroke, 2x2 gets 1px, 3x3 gets 2px, etc.
+        const maxDimension = Math.max(widthSquares, heightSquares);
+        const strokeWidth = Math.max(0, maxDimension - 1);
+        asset.stroke(strokeWidth > 0 ? '#333333' : '');
+        asset.strokeWidth(strokeWidth);
+        
         // Store dimensions for later persistence
         asset.assetWidth = newWidth;
         asset.assetHeight = newHeight;

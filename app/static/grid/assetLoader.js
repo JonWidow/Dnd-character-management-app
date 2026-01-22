@@ -137,6 +137,10 @@ class AssetLoader {
                         const offsetX = widthSquares % 2 === 1 ? width / 2 : 0;
                         const offsetY = heightSquares % 2 === 1 ? height / 2 : 0;
                         
+                        // Calculate stroke for visual size indicator
+                        const maxDimension = Math.max(widthSquares, heightSquares);
+                        const strokeWidth = Math.max(0, maxDimension - 1);
+                        
                         const konvaImage = new Konva.Image({
                             image: canvas,
                             x: x,
@@ -145,6 +149,8 @@ class AssetLoader {
                             height: height,
                             offsetX: offsetX,
                             offsetY: offsetY,
+                            stroke: strokeWidth > 0 ? '#333333' : '',
+                            strokeWidth: strokeWidth,
                             draggable: true,
                             name: 'asset'
                         });
