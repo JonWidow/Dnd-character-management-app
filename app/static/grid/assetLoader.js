@@ -88,16 +88,20 @@ class AssetLoader {
      */
     async createAssetImage(assetPath, x, y, width = 50, height = 50) {
         try {
+            console.log(`[AssetLoader] createAssetImage called with:`, {assetPath, x, y, width, height});
             console.log(`[AssetLoader] Creating image from: ${assetPath}`);
             
             // Create image element directly from SVG file path
             const img = new Image();
             img.src = assetPath;
             img.crossOrigin = 'anonymous';
+            
+            console.log(`[AssetLoader] Image element created, src=${assetPath}`);
 
             // Return a promise that resolves when image is loaded
             return new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
+                    console.error(`[AssetLoader] Image loading timeout for ${assetPath}`);
                     reject(new Error(`Image loading timeout for ${assetPath}`));
                 }, 5000);
 
@@ -112,9 +116,18 @@ class AssetLoader {
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         
+                        if (!ctx) {
+                            throw new Error('Failed to get canvas 2D context');
+                        }
+                        
                         // Draw the image onto canvas
                         ctx.drawImage(img, 0, 0, width, height);
                         console.log(`[AssetLoader] SVG rendered to canvas (${width}x${height})`);
+                        
+                        // Check if Konva is available
+                        if (typeof Konva === 'undefined') {
+                            throw new Error('Konva not defined in window');
+                        }
                         
                         // Create Konva image from canvas
                         const konvaImage = new Konva.Image({
@@ -127,10 +140,10 @@ class AssetLoader {
                             name: 'asset'
                         });
 
-                        console.log(`[AssetLoader] Konva image created at (${x}, ${y})`);
+                        console.log(`[AssetLoader] Konva image created at (${x}, ${y}), className=${konvaImage.className}`);
                         resolve(konvaImage);
                     } catch (error) {
-                        console.error(`[AssetLoader] Error rendering SVG to canvas:`, error);
+                        console.error(`[AssetLoader] Error rendering SVG to canvas:`, error, error.stack);
                         reject(error);
                     }
                 };
@@ -148,7 +161,7 @@ class AssetLoader {
                 };
             });
         } catch (error) {
-            console.error(`[AssetLoader] Error creating asset image:`, error);
+            console.error(`[AssetLoader] Error in createAssetImage:`, error, error.stack);
             return null;
         }
     }
@@ -293,3 +306,6 @@ class AssetLoader {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = AssetLoader;
 }
+
+// Also expose to global window object so it can be accessed from modules
+window.AssetLoader = AssetLoader;

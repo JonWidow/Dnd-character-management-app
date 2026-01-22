@@ -38,3 +38,37 @@ class GridAsset(db.Model):
     
     def __repr__(self):
         return f'<GridAsset {self.name} ({self.category})>'
+
+
+class PlacedAsset(db.Model):
+    """Placed assets on a specific grid."""
+    
+    __tablename__ = 'placed_asset'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    grid_code = db.Column(db.String(50), nullable=False, index=True)  # Reference to the grid
+    asset_path = db.Column(db.String(255), nullable=False)  # Path like '/static/assets/terrain/grass.svg'
+    x = db.Column(db.Integer, nullable=False)  # X coordinate in pixels
+    y = db.Column(db.Integer, nullable=False)  # Y coordinate in pixels
+    width = db.Column(db.Integer, default=50)  # Width in pixels
+    height = db.Column(db.Integer, default=50)  # Height in pixels
+    rotation = db.Column(db.Float, default=0)  # Rotation in degrees
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'grid_code': self.grid_code,
+            'asset_path': self.asset_path,
+            'x': self.x,
+            'y': self.y,
+            'width': self.width,
+            'height': self.height,
+            'rotation': self.rotation
+        }
+    
+    def __repr__(self):
+        return f'<PlacedAsset {self.asset_path} at ({self.x}, {self.y}) on grid {self.grid_code}>'
+

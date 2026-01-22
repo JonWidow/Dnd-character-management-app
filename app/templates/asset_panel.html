@@ -12,6 +12,9 @@
     
     <!-- Category Filter -->
     <div style="padding: 12px 14px; border-bottom: 1px solid #f0f0f0;">
+        <button id="testAssetPlacement" style="width: 100%; background: #ff9800; padding: 8px; border: none; border-radius: 4px; color: white; font-weight: bold; cursor: pointer; margin-bottom: 8px;">
+            Test: Place Grass
+        </button>
         <div style="font-size: 12px; font-weight: 600; color: #666; margin-bottom: 8px;">CATEGORY</div>
         <select id="assetCategoryFilter" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
             <option value="">All Categories</option>
@@ -40,6 +43,9 @@
 <script>
     console.log('[AssetPanel] Asset panel script loaded');
     
+    // Global state to track dragging
+    window.draggedAssetData = null;
+    
     // Global AssetLoader instance
     let assetLoader = null;
     let selectedAssetPath = null;
@@ -48,8 +54,30 @@
     const assetPanelBtn = document.getElementById('toggleAssetPanel');
     const assetPanel = document.getElementById('assetPanel');
     const closeAssetPanelBtn = document.getElementById('closeAssetPanel');
+    const testBtn = document.getElementById('testAssetPlacement');
     
-    console.log('[AssetPanel] Elements found:', {assetPanelBtn, assetPanel, closeAssetPanelBtn});
+    console.log('[AssetPanel] Elements found:', {assetPanelBtn, assetPanel, closeAssetPanelBtn, testBtn});
+    
+    // Test button handler
+    if (testBtn) {
+        testBtn.addEventListener('click', async () => {
+            console.log('[AssetPanel] Test button clicked');
+            if (window.assetPlacementHandler && window.assetLoader) {
+                console.log('[AssetPanel] Handlers ready, calling placeAsset');
+                try {
+                    await window.assetPlacementHandler.placeAsset(200, 200, '/static/assets/terrain/grass.svg');
+                    console.log('[AssetPanel] placeAsset completed');
+                } catch (error) {
+                    console.error('[AssetPanel] placeAsset error:', error);
+                }
+            } else {
+                console.error('[AssetPanel] Handlers not ready:', {
+                    handler: !!window.assetPlacementHandler,
+                    loader: !!window.assetLoader
+                });
+            }
+        });
+    }
     
     if (assetPanelBtn && assetPanel && closeAssetPanelBtn) {
         assetPanelBtn.addEventListener('click', () => {
@@ -124,7 +152,12 @@
                 }
                 
                 assetList.forEach(asset => {
+                    console.log('[AssetPanel] Creating asset element for:', asset.name);
+                    
                     const assetEl = document.createElement('div');
+                    assetEl.className = 'asset-item';
+                    assetEl.setAttribute('data-asset-path', asset.path);
+                    assetEl.setAttribute('data-asset-name', asset.name);
                     assetEl.style.cssText = `
                         padding: 10px;
                         margin: 4px 0;
@@ -165,37 +198,85 @@
                         assetEl.style.borderColor = '#e0e0e0';
                     });
                     
-                    assetEl.addEventListener('click', () => {
-                        console.log('[AssetPanel] Asset clicked:', asset);
-                        selectedAssetPath = asset.path;
-                        window.selectedAsset = asset;
-                        assetPanel.style.display = 'none';
-                        
-                        // Enable asset placement mode on grid
-                        if (window.gridModule && window.gridModule.setAssetPlacementMode) {
-                            console.log('[AssetPanel] Setting placement mode for:', asset.path);
-                            window.gridModule.setAssetPlacementMode(asset.path);
-                            console.log('[AssetPanel] Click on the grid to place the asset, or press Escape to cancel');
-                        } else {
-                            console.error('[AssetPanel] gridModule not available:', window.gridModule);
+                    // Drag support with detailed logging
+                    assetEl.draggable = true;
+                    assetEl.addEventListener('dragstart', (e) => {
+                        console.log('[AssetPanel] Drag started for:', asset.name);
+                        e.dataTransfer.effectAllowed = 'copy';
+                        // Store in global variable for cross-window transfer
+                        window.draggedAssetData = asset;
+                        console.log('[AssetPanel] Stored asset in window.draggedAssetData');
+                        // Also try setting dataTransfer data as fallback
+                        try {
+                            e.dataTransfer.setData('text/plain', JSON.stringify(asset));
+                            console.log('[AssetPanel] Also set text/plain data');
+                        } catch (err) {
+                            console.error('[AssetPanel] Could not set dataTransfer data:', err);
                         }
                     });
                     
-                    // Drag support
-                    assetEl.draggable = true;
-                    assetEl.addEventListener('dragstart', (e) => {
-                        e.dataTransfer.effectAllowed = 'copy';
-                        e.dataTransfer.setData('application/json', JSON.stringify(asset));
-                    });
-                    
                     assetEl.addEventListener('dragend', (e) => {
+                        console.log('[AssetPanel] Drag ended for:', asset.name);
                         e.dataTransfer.dropEffect = 'copy';
                     });
                     
+                    console.log('[AssetPanel] About to append element for:', asset.name, 'to container with id:', assetsList.id);
                     assetsList.appendChild(assetEl);
+                    console.log('[AssetPanel] Asset element added to list:', asset.name);
                 });
             });
         };
+        
+        // Use event delegation for click handling - more reliable than individual handlers
+        // Add debounce to prevent multiple clicks
+        let lastClickTime = 0;
+        const CLICK_DEBOUNCE_MS = 500;
+        
+        assetsList.addEventListener('click', async (e) => {
+            const assetEl = e.target.closest('.asset-item');
+            if (!assetEl) return;
+            
+            // Debounce clicks
+            const now = Date.now();
+            if (now - lastClickTime < CLICK_DEBOUNCE_MS) {
+                console.log('[AssetPanel] Click debounced - too soon');
+                return;
+            }
+            lastClickTime = now;
+            
+            const assetPath = assetEl.getAttribute('data-asset-path');
+            const assetName = assetEl.getAttribute('data-asset-name');
+            
+            console.log('[AssetPanel] Asset element clicked via delegation:', assetName, assetPath);
+            e.stopPropagation();
+            
+            try {
+                // Close the panel
+                assetPanel.style.display = 'none';
+                
+                // Try to place asset directly
+                if (window.assetPlacementHandler && window.assetLoader) {
+                    console.log('[AssetPanel] Placing asset directly via handler');
+                    // Place at center of grid (snap to grid)
+                    const CELL_SIZE = 50;
+                    const centerX = Math.round(500 / CELL_SIZE) * CELL_SIZE;
+                    const centerY = Math.round(500 / CELL_SIZE) * CELL_SIZE;
+                    await window.assetPlacementHandler.placeAsset(centerX, centerY, assetPath);
+                    console.log('[AssetPanel] Asset placement completed');
+                } else if (window.gridModule && window.gridModule.setAssetPlacementMode) {
+                    console.log('[AssetPanel] Enabling placement mode');
+                    window.gridModule.setAssetPlacementMode(assetPath);
+                } else {
+                    console.error('[AssetPanel] No handlers available:', {
+                        assetPlacementHandler: !!window.assetPlacementHandler,
+                        assetLoader: !!window.assetLoader,
+                        gridModule: !!window.gridModule
+                    });
+                }
+            } catch (error) {
+                console.error('[AssetPanel] Error during asset placement:', error);
+            }
+        });
         
         // Initial display
         displayByCategory();

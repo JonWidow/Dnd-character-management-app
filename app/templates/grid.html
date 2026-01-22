@@ -330,6 +330,9 @@
         const assetLoader = new AssetLoader(gridModule.assetLayer);
         assetPlacementHandler.setAssetLoader(assetLoader);
         
+        // Load placed assets from database
+        await assetPlacementHandler.loadPlacedAssets(GRID_CODE);
+        
         // Expose to global scope so asset panel can access them
         window.gridModule = gridModule;
         window.assetLoader = assetLoader;
