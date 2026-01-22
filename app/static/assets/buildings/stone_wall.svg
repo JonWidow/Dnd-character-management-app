@@ -1,0 +1,19 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Stone wall -->
+  <rect x="10" y="20" width="80" height="60" fill="#A9927D"/>
+  <!-- Stones pattern -->
+  <rect x="15" y="25" width="18" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  <rect x="35" y="25" width="18" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  <rect x="55" y="25" width="18" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  <rect x="75" y="25" width="10" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  
+  <rect x="15" y="40" width="18" height="12" fill="#9B8370" stroke="#6B5344" stroke-width="1"/>
+  <rect x="35" y="40" width="18" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  <rect x="55" y="40" width="18" height="12" fill="#9B8370" stroke="#6B5344" stroke-width="1"/>
+  <rect x="75" y="40" width="10" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  
+  <rect x="15" y="55" width="18" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  <rect x="35" y="55" width="18" height="12" fill="#9B8370" stroke="#6B5344" stroke-width="1"/>
+  <rect x="55" y="55" width="18" height="12" fill="#8B7355" stroke="#6B5344" stroke-width="1"/>
+  <rect x="75" y="55" width="10" height="12" fill="#9B8370" stroke="#6B5344" stroke-width="1"/>
+</svg>

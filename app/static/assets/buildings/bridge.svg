@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bridge supports -->
+  <rect x="20" y="35" width="8" height="50" fill="#8B4513"/>
+  <rect x="72" y="35" width="8" height="50" fill="#8B4513"/>
+  <!-- Bridge deck -->
+  <rect x="15" y="35" width="70" height="12" fill="#A0826D"/>
+  <!-- Planks -->
+  <rect x="20" y="37" width="12" height="8" fill="#8B7355"/>
+  <rect x="35" y="37" width="12" height="8" fill="#8B7355"/>
+  <rect x="50" y="37" width="12" height="8" fill="#8B7355"/>
+  <rect x="65" y="37" width="12" height="8" fill="#8B7355"/>
+  <!-- Railings -->
+  <line x1="25" y1="20" x2="25" y2="35" stroke="#654321" stroke-width="2"/>
+  <line x1="40" y1="20" x2="40" y2="35" stroke="#654321" stroke-width="2"/>
+  <line x1="55" y1="20" x2="55" y2="35" stroke="#654321" stroke-width="2"/>
+  <line x1="70" y1="20" x2="70" y2="35" stroke="#654321" stroke-width="2"/>
+  <line x1="25" y1="22" x2="70" y2="22" stroke="#654321" stroke-width="1.5"/>
+</svg>

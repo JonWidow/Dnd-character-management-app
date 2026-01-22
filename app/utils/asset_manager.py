@@ -10,7 +10,9 @@ ASSET_CATEGORIES = {
     'tokens': 'Character and creature tokens',
     'terrain': 'Terrain and tile assets',
     'objects': 'Objects, furniture, and props',
-    'effects': 'Spell effects and visual effects'
+    'effects': 'Spell effects and visual effects',
+    'nature': 'Nature elements (trees, rocks, plants)',
+    'buildings': 'Buildings and structures'
 }
 
 

@@ -1,0 +1,18 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Well stone circle -->
+  <circle cx="50" cy="50" r="35" fill="none" stroke="#A9927D" stroke-width="6"/>
+  <circle cx="50" cy="50" r="30" fill="none" stroke="#8B7355" stroke-width="2"/>
+  <!-- Stones pattern -->
+  <g opacity="0.6">
+    <rect x="20" y="45" width="8" height="10" fill="#696969"/>
+    <rect x="30" y="40" width="8" height="10" fill="#696969"/>
+    <rect x="40" y="38" width="8" height="12" fill="#696969"/>
+    <rect x="50" y="37" width="8" height="12" fill="#696969"/>
+    <rect x="60" y="38" width="8" height="12" fill="#696969"/>
+    <rect x="70" y="42" width="8" height="10" fill="#696969"/>
+  </g>
+  <!-- Wooden post -->
+  <rect x="45" y="48" width="10" height="10" fill="#654321"/>
+  <!-- Rope -->
+  <path d="M 50 48 Q 45 35 50 20" stroke="#DAA520" stroke-width="2" fill="none"/>
+</svg>
