@@ -5,28 +5,14 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import requests
 import time
 from app import app, db
 from app.models import Feat, CharacterClassModel
 from sqlalchemy import func
+from api_utils import get_json, DEFAULT_SLEEP
 
 API_URL = "https://www.dnd5eapi.co/api/feats"
-SLEEP = 0.2
-
-def get_json(url):
-    for attempt in range(3):
-        try:
-            r = requests.get(url, timeout=10)
-            if r.status_code == 200:
-                return r.json()
-            else:
-                print(f"HTTP {r.status_code} for {url}")
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt+1}/3 failed for {url}: {e}")
-            time.sleep(2)
-    print(f"Failed to fetch {url}")
-    return None
+SLEEP = DEFAULT_SLEEP
 
 def upsert_feat(details):
     """Idempotently create/update a Feat."""

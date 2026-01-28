@@ -6,13 +6,12 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import time
-import requests
 from typing import Dict, Any, List
 from app import app, db
 from sqlalchemy import func
 from app.models.character_struct import CharacterClassModel, CharacterClassFeature
+from api_utils import get_json, API_ROOT, DEFAULT_SLEEP
 
-API_ROOT = "https://www.dnd5eapi.co"
 CLASSES_URL = f"{API_ROOT}/api/classes"
 
 # PHB-style: which character classes actually PREPARE spells (vs know list)
@@ -25,24 +24,7 @@ PREPARES_SPELLS = {
 }
 
 # polite rate limit
-SLEEP = 0.15  # seconds between requests
-
-
-def get_json(url: str, retries: int = 3, timeout: int = 12) -> Dict[str, Any] | None:
-    for attempt in range(1, retries + 1):
-        try:
-            r = requests.get(url, timeout=timeout)
-            if r.status_code == 200:
-                return r.json()
-            # Some class endpoints (e.g., /spellcasting for martials) 404 by design; treat as None
-            if r.status_code == 404:
-                return None
-            print(f"[HTTP {r.status_code}] {url}")
-        except requests.RequestException as e:
-            print(f"[WARN] Attempt {attempt}/{retries} for {url} failed: {e}")
-        time.sleep(SLEEP * attempt)
-    print(f"[ERROR] Failed to fetch {url}")
-    return None
+SLEEP = DEFAULT_SLEEP
 
 
 def upsert_class(row: Dict[str, Any]) -> CharacterClassModel:

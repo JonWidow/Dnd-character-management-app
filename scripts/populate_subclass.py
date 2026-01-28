@@ -9,31 +9,13 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import time
-import requests
 from typing import Dict, Any
 from app import app, db
 from app.models.character_struct import CharacterClassModel, SubclassModel
 from sqlalchemy import func
+from api_utils import get_json, API_ROOT, DEFAULT_SLEEP
 
-API_ROOT = "https://www.dnd5eapi.co"
-SLEEP = 0.15  # polite rate limit between requests
-
-
-def get_json(url: str, retries: int = 3, timeout: int = 12) -> Dict[str, Any] | None:
-    """Fetch JSON from URL with retries."""
-    for attempt in range(1, retries + 1):
-        try:
-            r = requests.get(url, timeout=timeout)
-            if r.status_code == 200:
-                return r.json()
-            if r.status_code == 404:
-                return None
-            print(f"[HTTP {r.status_code}] {url}")
-        except requests.RequestException as e:
-            print(f"[WARN] Attempt {attempt}/{retries} for {url} failed: {e}")
-        time.sleep(SLEEP * attempt)
-    print(f"[ERROR] Failed to fetch {url}")
-    return None
+SLEEP = DEFAULT_SLEEP
 
 
 def upsert_subclass(class_row: CharacterClassModel, name: str, description: str | None):

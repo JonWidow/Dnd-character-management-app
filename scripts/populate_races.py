@@ -11,26 +11,10 @@ from typing import Dict, Any, List
 from app import app, db
 from app.models.character_struct import RaceModel, RaceFeature
 from sqlalchemy import func
+from api_utils import get_json, API_ROOT, DEFAULT_SLEEP
 
-API_ROOT = "https://www.dnd5eapi.co"
 RACES_URL = f"{API_ROOT}/api/races"
-SLEEP = 0.15  # polite rate limit between requests
-
-
-def get_json(url: str, retries: int = 3, timeout: int = 12) -> Dict[str, Any] | None:
-    for attempt in range(1, retries + 1):
-        try:
-            r = requests.get(url, timeout=timeout)
-            if r.status_code == 200:
-                return r.json()
-            if r.status_code == 404:
-                return None
-            print(f"[HTTP {r.status_code}] {url}")
-        except requests.RequestException as e:
-            print(f"[WARN] Attempt {attempt}/{retries} for {url} failed: {e}")
-        time.sleep(SLEEP * attempt)
-    print(f"[ERROR] Failed to fetch {url}")
-    return None
+SLEEP = DEFAULT_SLEEP
 
 
 def upsert_race(row: Dict[str, Any]) -> RaceModel:
