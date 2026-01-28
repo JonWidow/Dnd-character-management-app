@@ -1,4 +1,3 @@
-# /opt/dnd/grid/__init__.py
 from flask import Blueprint, render_template, jsonify
 from app.extensions import socketio
 from flask_socketio import join_room, leave_room, emit
@@ -7,10 +6,9 @@ from app.models.character import Character
 from app.models.encounter import Encounter, CombatParticipant
 from app.models import db
 
-# All grid routes will live under /grid/...
 grid_bp = Blueprint("grid", __name__, url_prefix="/grid")
 
-# ---------- In-memory cache for active sessions ----------
+# In-memory cache for active sessions
 grids = {}
 
 def _room(code: str) -> str:
@@ -52,7 +50,7 @@ def _get_or_create_encounter(code: str) -> Encounter:
     
     return encounter
 
-# ---------- HTTP routes ----------
+# HTTP routes
 @grid_bp.route("/<code>")
 def grid_view(code):
     return render_template("grid.html", code=code)
@@ -103,7 +101,7 @@ def get_characters():
         for c in characters
     ])
 
-# ---------- Socket.IO handlers ----------
+# Socket.IO handlers
 @socketio.on("join_grid")
 def on_join_grid(data):
     code = (data or {}).get("code")

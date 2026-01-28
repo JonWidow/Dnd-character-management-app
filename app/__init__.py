@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, render_template, request, jsonify, abort, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from app.models import db, Character, Skill, Spell, CharacterClassModel, RaceModel, ClassSpellSlots, User, Feat
@@ -12,19 +11,17 @@ import os
 
 app = Flask(__name__)
 
-# --- Instance folder & absolute SQLite path ---
-basedir = os.path.abspath(os.path.dirname(__file__))         # /opt/dnd
-instance_path = os.path.join(basedir, "../instance")            # /opt/dnd/instance
+basedir = os.path.abspath(os.path.dirname(__file__))
+instance_path = os.path.join(basedir, "../instance")
 os.makedirs(instance_path, exist_ok=True)
 
-db_path = os.path.join(instance_path, "characters.db")       # /opt/dnd/instance/characters.db
+db_path = os.path.join(instance_path, "characters.db")
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret")
 
 db.init_app(app)
 
-# Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -34,7 +31,6 @@ login_manager.login_message = 'Please log in to access this page.'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# Initialize database
 with app.app_context():
     db.create_all()
 
@@ -42,7 +38,7 @@ socketio.init_app(app)
 app.register_blueprint(grid_bp)
 app.register_blueprint(assets_bp)
 
-# ---------- Jinja Filters ----------
+# Jinja Filters
 @app.template_filter('parse_proficiencies')
 def parse_proficiencies(items):
     """
@@ -77,7 +73,7 @@ def ensure_list(value):
             return [item.strip() for item in value.split() if item.strip()]
     return []
 
-# ---------- Helpers ----------
+# Helpers
 def ability_mod(score: int) -> int:
     try:
         return (int(score) - 10) // 2
@@ -89,7 +85,7 @@ def _require_admin():
     if not current_user.is_authenticated or not current_user.is_admin:
         abort(403)
 
-# ---------- Routes ----------
+# Routes
 @app.route('/')
 def home():
     return render_template('home.html')
@@ -758,7 +754,6 @@ def feat_details(feat_id):
     feat = Feat.query.get_or_404(feat_id)
     return render_template('feat_details.html', feat=feat)
 
-# Edit character (GET shows form, POST saves and handles known spells)
 @app.route('/characters/<int:char_id>/edit', methods=['GET', 'POST'])
 def edit_character(char_id: int):
     char = Character.query.get_or_404(char_id)
