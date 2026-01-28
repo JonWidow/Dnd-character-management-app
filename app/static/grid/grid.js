@@ -1,5 +1,4 @@
 // grid.js – core grid setup
-console.log("grid.js loaded");
 
 // ----- CONSTANTS -----
 export const CELL_SIZE = 50;

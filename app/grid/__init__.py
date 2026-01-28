@@ -80,8 +80,8 @@ def get_character_stats(char_id):
                     "used": slot.total_slots - slot.remaining_slots
                 })
     except Exception as e:
-        print(f"Error fetching spell slots: {e}")
         # Continue without spell slots rather than failing
+        pass
     
     return jsonify({
         "id": character.id,
@@ -115,7 +115,6 @@ def on_join_grid(data):
     # Load/create encounter
     encounter = _get_or_create_encounter(code)
     join_room(_room(code))
-    print(f"[socket] {user} joined {code}")
     emit("presence", {"user": user, "action": "join"}, to=_room(code))
 
 @socketio.on("leave_grid")
@@ -131,7 +130,6 @@ def on_request_state(data):
     encounter = _get_or_create_encounter(code)
     grid_data = grids[code]
     tokens = list(grid_data["tokens"].values())
-    print(f"[socket] state for {code}: {len(tokens)} tokens")
     emit("state", {
         "exists": True,
         "grid": {"w": grid_data["w"], "h": grid_data["h"], "cell_px": grid_data["cell_px"], "name": code},
@@ -174,7 +172,6 @@ def on_spawn_token(data):
         "character_id": participant.character_id
     }
     grid_data["tokens"][participant.id] = tok_dict
-    print(f"[socket] spawn in {code}: id={participant.id} @ ({participant.x},{participant.y})")
 
     emit("token_spawned", tok_dict, to=_room(code))
     emit("state", {
@@ -210,7 +207,6 @@ def on_move_token(data):
         participant.y = y
         db.session.commit()
     
-    print(f"[socket] move in {code}: id={tid} -> ({x},{y})")
     emit("token_moved", tok, to=_room(code))
 
 @socketio.on("remove_token")
@@ -229,7 +225,6 @@ def on_remove_token(data):
     CombatParticipant.query.filter_by(id=tid).delete()
     db.session.commit()
     
-    print(f"[socket] remove in {code}: id={tid}")
     emit("token_removed", {"token_id": tid}, to=_room(code))
 
 @grid_bp.route("/spell-slots/<int:slot_id>/toggle", methods=["POST"])
