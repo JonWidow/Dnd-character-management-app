@@ -224,6 +224,7 @@
         <!-- Character Spells (Unified) -->
         {% set prepared = prepared_spells if prepared_spells is defined else [] %}
         {% set prepared_ids = prepared | map(attribute='id') | list %}
+        {% set spells_display = spells_to_display if spells_to_display is defined else character.spells %}
         <div class="mb-6">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="font-semibold text-gray-700">
@@ -243,7 +244,7 @@
                             Manage Known
                         </button>
                     {% endif %}
-                    {% if character.spells and character.spells|length > 0 %}
+                    {% if character.char_class and character.char_class.prepares_spells and spells_display and spells_display|length > 0 %}
                         <button id="prepareSpellsBtn"
                                 class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
                             Prepare
@@ -252,10 +253,10 @@
                 </div>
             </div>
 
-            {% if character.spells and character.spells|length > 0 %}
+            {% if spells_display and spells_display|length > 0 %}
                 <!-- Organize all known spells by level -->
                 {% set known_by_level = {} %}
-                {% for sp in character.spells %}
+                {% for sp in spells_display %}
                     {% if known_by_level.update({sp.level: known_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
                 {% endfor %}
 

@@ -112,7 +112,16 @@ def character_details(char_id):
             return redirect(url_for('characters.character_details', char_id=char_id))
 
     cls = char.character_class_model
-    known_spells_count = len(getattr(char, "spells", []) or [])
+    
+    # Determine which spells to display as "known"
+    # For classes that know all spells, show all class spells
+    # For classes that choose spells, show only what the character has learned
+    spells_to_display = char.spells
+    if cls and not cls.chooses_spells_to_know:
+        # This class knows all spells - show all class spells
+        spells_to_display = cls.spells
+    
+    known_spells_count = len(spells_to_display or [])
     max_prepared = 0
     prepared_spells = char.prepared_spells
     
@@ -122,7 +131,8 @@ def character_details(char_id):
             sc_map = {"int": char.int_sc, "wis": char.wis_sc, "cha": char.cha_sc}
             max_prepared = max(1, char.level + ability_mod(sc_map.get(ability, 10)))
         else:
-            prepared_spells = char.spells
+            # Class doesn't prepare spells - all known spells are "prepared"
+            prepared_spells = spells_to_display
 
     if cls:
         try:
@@ -147,6 +157,7 @@ def character_details(char_id):
 
     return render_template('character_details.html',
                            character=char,
+                           spells_to_display=spells_to_display,
                            known_spells_count=known_spells_count,
                            max_prepared=max_prepared,
                            prepared_spells=prepared_spells,
