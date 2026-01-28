@@ -587,11 +587,107 @@
                 updateCount();
             }
             
-            openPrepare?.addEventListener("click", () => { updateCount(); prepareModal.classList.remove("hidden"); });
+            // Function to dynamically update prepare spells modal
+            async function updatePrepareSpellsModal() {
+                try {
+                    const response = await fetch(`/api/characters/{{ character.id }}/known-spells`);
+                    if (!response.ok) throw new Error('Failed to fetch spells');
+                    
+                    const data = await response.json();
+                    const spells = data.spells;
+                    const knownIds = new Set(data.known_ids);
+                    const preparedIds = new Set(data.prepared_ids);
+                    
+                    // Organize spells by level
+                    const spellsByLevel = {};
+                    spells.forEach(spell => {
+                        if (!spellsByLevel[spell.level]) {
+                            spellsByLevel[spell.level] = [];
+                        }
+                        spellsByLevel[spell.level].push(spell);
+                    });
+                    
+                    // Update tabs
+                    const tabsContainer = prepareModal.querySelector('.flex.border-b');
+                    tabsContainer.innerHTML = '';
+                    for (let level = 0; level < 10; level++) {
+                        if (spellsByLevel[level]) {
+                            const button = document.createElement('button');
+                            button.type = 'button';
+                            button.className = `prep-spell-tab px-3 py-2 font-medium text-sm ${level === 0 ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`;
+                            button.dataset.level = level;
+                            button.textContent = level === 0 ? 'Cantrips' : `Level ${level}`;
+                            button.addEventListener('click', switchPrepSpellTab);
+                            tabsContainer.appendChild(button);
+                        }
+                    }
+                    
+                    // Update content
+                    const contentContainer = prepareModal.querySelector('form');
+                    const oldContent = contentContainer.querySelectorAll('.prep-spell-content');
+                    oldContent.forEach(el => el.remove());
+                    
+                    for (let level = 0; level < 10; level++) {
+                        if (spellsByLevel[level]) {
+                            const div = document.createElement('div');
+                            div.id = `prep-spell-level-${level}`;
+                            div.className = `prep-spell-content ${level !== 0 ? 'hidden' : ''} max-h-48 overflow-y-auto border rounded p-3 mb-4`;
+                            
+                            const spellsAtLevel = spellsByLevel[level].sort((a, b) => a.name.localeCompare(b.name));
+                            spellsAtLevel.forEach(spell => {
+                                const label = document.createElement('label');
+                                label.className = 'flex items-center justify-between py-2 hover:bg-gray-100 px-2 rounded';
+                                
+                                const span = document.createElement('span');
+                                span.textContent = spell.name;
+                                
+                                const checkbox = document.createElement('input');
+                                checkbox.type = 'checkbox';
+                                checkbox.name = 'prepared_spells';
+                                checkbox.value = spell.id;
+                                checkbox.className = 'prep-checkbox';
+                                checkbox.checked = preparedIds.has(spell.id);
+                                checkbox.addEventListener('change', enforceLimit);
+                                
+                                label.appendChild(span);
+                                label.appendChild(checkbox);
+                                div.appendChild(label);
+                            });
+                            contentContainer.appendChild(div);
+                        }
+                    }
+                    
+                    // Update checkbox array reference
+                    checkboxes.length = 0;
+                    document.querySelectorAll('.prep-checkbox').forEach(cb => checkboxes.push(cb));
+                    updateCount();
+                } catch (error) {
+                    console.error('Error updating prepare spells modal:', error);
+                }
+            }
+            
+            function switchPrepSpellTab(e) {
+                e.preventDefault();
+                const level = e.target.dataset.level;
+                document.querySelectorAll('.prep-spell-content').forEach(content => {
+                    content.classList.add('hidden');
+                });
+                document.querySelectorAll('.prep-spell-tab').forEach(t => {
+                    t.classList.remove('bg-blue-600', 'text-white');
+                    t.classList.add('bg-gray-200');
+                });
+                document.getElementById(`prep-spell-level-${level}`).classList.remove('hidden');
+                e.target.classList.remove('bg-gray-200');
+                e.target.classList.add('bg-blue-600', 'text-white');
+            }
+            
+            openPrepare?.addEventListener("click", async () => { 
+                await updatePrepareSpellsModal();
+                prepareModal.classList.remove("hidden"); 
+            });
             closePrepare?.addEventListener("click", () => prepareModal.classList.add("hidden"));
             cancelPrepareSpells?.addEventListener("click", () => prepareModal.classList.add("hidden"));
             prepareModal?.addEventListener("click", (e) => { if (e.target === prepareModal) prepareModal.classList.add("hidden"); });
-            checkboxes.forEach(cb => cb.addEventListener("change", enforceLimit));
 
             // Spell tabs (Known Spells display)
             const spellTabs = document.querySelectorAll('.spell-tab');

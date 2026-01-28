@@ -113,13 +113,22 @@ def character_details(char_id):
 
     cls = char.character_class_model
     
+    # Calculate max spell level based on spell slots (do this early)
+    max_spell_level = 0
+    for slot in char.spell_slots:
+        if slot.total_slots > 0:
+            max_spell_level = max(max_spell_level, slot.level)
+    
     # Determine which spells to display as "known"
-    # For classes that know all spells, show all class spells
+    # For classes that know all spells, show all class spells up to their level
     # For classes that choose spells, show only what the character has learned
     spells_to_display = char.spells
     if cls and not cls.chooses_spells_to_know:
-        # This class knows all spells - show all class spells
-        spells_to_display = cls.spells
+        # This class knows all spells - show all class spells up to their spell level
+        spells_to_display = [s for s in cls.spells if s.level <= max_spell_level]
+    else:
+        # This class chooses spells - only filter if they're displaying all-known
+        spells_to_display = [s for s in (char.spells or []) if s.level <= max_spell_level]
     
     known_spells_count = len(spells_to_display or [])
     max_prepared = 0
@@ -148,12 +157,6 @@ def character_details(char_id):
             )
     else:
         feats = []
-
-    # Calculate max spell level based on spell slots
-    max_spell_level = 0
-    for slot in char.spell_slots:
-        if slot.total_slots > 0:
-            max_spell_level = max(max_spell_level, slot.level)
 
     return render_template('character_details.html',
                            character=char,
@@ -397,6 +400,42 @@ def level_up_character(char_id):
         db.session.commit()
         flash(f"{character.name} is now level {character.level}!", "success")
         return redirect(url_for('characters.character_details', char_id=character.id))
+
+
+@characters_bp.route("/api/characters/<int:char_id>/known-spells", methods=["GET"])
+@login_required
+def get_known_spells(char_id: int):
+    """Get current known spells for a character as JSON."""
+    char = Character.query.get_or_404(char_id)
+    
+    if char.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+    
+    cls = char.character_class_model
+    
+    # Determine which spells to return based on class
+    spells = char.spells
+    if cls and not cls.chooses_spells_to_know:
+        # Class knows all spells
+        spells = cls.spells
+    
+    # Filter by max spell level
+    max_spell_level = 0
+    for slot in char.spell_slots:
+        if slot.total_slots > 0:
+            max_spell_level = max(max_spell_level, slot.level)
+    
+    spells = [s for s in (spells or []) if s.level <= max_spell_level]
+    
+    return jsonify({
+        'spells': [
+            {'id': s.id, 'name': s.name, 'level': s.level}
+            for s in spells
+        ],
+        'known_ids': [s.id for s in char.spells],
+        'prepared_ids': [s.id for s in char.prepared_spells],
+        'max_spell_level': max_spell_level
+    })
 
 
 @characters_bp.route("/characters/<int:char_id>/manage_known_spells", methods=["POST"])
