@@ -42,6 +42,15 @@ class CharacterClassModel(db.Model):
     # IMPORTANT: name must be 'spells' to match Spell.classes back_populates
     spells = db.relationship('Spell', secondary='spell_classes', back_populates='classes')
 
+    @staticmethod
+    def get_by_name(class_name):
+        """Get a character class by name (case-insensitive)."""
+        if not class_name:
+            return None
+        return CharacterClassModel.query.filter(
+            db.func.lower(CharacterClassModel.name) == db.func.lower(class_name.strip())
+        ).first()
+
     def features_up_to(self, level: int):
         return (self.features
                 .filter(CharacterClassFeature.level <= level)

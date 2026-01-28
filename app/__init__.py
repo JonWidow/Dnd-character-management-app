@@ -519,7 +519,7 @@ def character_details(char_id):
             flash('Spell slots reset on long rest!', 'success')
             return redirect(url_for('character_details', char_id=char_id))
 
-    cls = _class_row_for(char)
+    cls = char.get_character_class_model()
     known_spells_count = len(getattr(char, "spells", []) or [])
     max_prepared = 0
     prepared_spells = char.prepared_spells
@@ -771,7 +771,7 @@ def feat_details(feat_id):
 def edit_character(char_id: int):
     char = Character.query.get_or_404(char_id)
 
-    cls = _class_row_for(char)
+    cls = char.get_character_class_model()
 
     if request.method == 'POST':
         nm = request.form.get('name')
@@ -823,7 +823,7 @@ def edit_character(char_id: int):
             char.spells = chosen
 
         # Recalc max prepared & enforce prepared ⊆ known and cap
-        cls = _class_row_for(char)
+        cls = char.get_character_class_model()
         max_prepared = 0
         if cls and cls.prepares_spells:
             ability = (cls.spellcasting_ability or "").lower()
@@ -939,7 +939,7 @@ def level_up_character(char_id):
 def prepare_spells(char_id: int):
     char = Character.query.get_or_404(char_id)
 
-    cls = _class_row_for(char)
+    cls = char.get_character_class_model()
     max_prepared = 0
     if cls and cls.prepares_spells:
         ability = (cls.spellcasting_ability or "").lower()

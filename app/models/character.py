@@ -117,6 +117,14 @@ class Character(db.Model):
 
         return hp
 
+    def get_character_class_model(self):
+        """Get the CharacterClassModel for this character by looking up the class name."""
+        from app.models.character_struct import CharacterClassModel
+        if not self.char_class:
+            return None
+        class_name = self.char_class.name if hasattr(self.char_class, 'name') else str(self.char_class)
+        return CharacterClassModel.get_by_name(class_name)
+
     def get_spell_slots_dict(self):
         """Return {level: (remaining, total)} for all spell levels."""
         return {slot.level: (slot.remaining_slots, slot.total_slots) for slot in self.spell_slots}
