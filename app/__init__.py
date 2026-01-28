@@ -780,6 +780,9 @@ def edit_character(char_id: int):
         rc = request.form.get('race')
         if rc: char.race = rc.strip()
 
+        # Track original CON to detect if it changed
+        old_con_sc = char.con_sc
+
         lvl = request.form.get('level', type=int)
         if lvl and lvl >= 1:
             old_level = char.level
@@ -787,14 +790,6 @@ def edit_character(char_id: int):
             # If level changed, sync spell slots FIRST before calculating available spells
             if old_level != lvl:
                 char.sync_spell_slots()
-                # Recalculate HP based on new level
-                if char.char_class:
-                    con_mod = char.sc_to_mod(char.con_sc)
-                    hit_die_val = int(char.char_class.hit_die.replace('d', '')) if 'd' in str(char.char_class.hit_die) else char.char_class.hit_die
-                    # HP = hit_die + (level - 1) * (hit_die / 2 + 1) + con_mod * level
-                    avg_hit_die = (hit_die_val // 2) + 1  # Average roll (e.g., d8 = 5, d6 = 4)
-                    char.max_hp = hit_die_val + (lvl - 1) * avg_hit_die + con_mod * lvl
-                    char.current_hp = char.max_hp
 
         # Handle notes - only update if explicitly provided in form
         if 'notes' in request.form:
@@ -809,6 +804,17 @@ def edit_character(char_id: int):
         ac = request.form.get('armor_class', type=int)
         if ac is not None and ac >= 1:
             char.armor_class = ac
+
+        # Recalculate HP if level or CON changed
+        con_changed = char.con_sc != old_con_sc
+        if (lvl and lvl >= 1 and old_level != lvl) or con_changed:
+            if char.char_class:
+                con_mod = char.sc_to_mod(char.con_sc)
+                hit_die_val = int(char.char_class.hit_die.replace('d', '')) if 'd' in str(char.char_class.hit_die) else char.char_class.hit_die
+                # HP = hit_die + (level - 1) * (hit_die / 2 + 1) + con_mod * level
+                avg_hit_die = (hit_die_val // 2) + 1  # Average roll (e.g., d8 = 5, d6 = 4)
+                char.max_hp = hit_die_val + (char.level - 1) * avg_hit_die + con_mod * char.level
+                char.current_hp = char.max_hp
 
         # known spells selection
         spell_ids = request.form.getlist('known_spells')
