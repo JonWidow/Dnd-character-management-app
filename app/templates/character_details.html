@@ -15,7 +15,7 @@
                         class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">
                     Spell Stats
                 </button>
-                <a href="{{ url_for('edit_character', char_id=character.id) }}"
+                <a href="{{ url_for('characters.edit_character', char_id=character.id) }}"
                    class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                     Edit
                 </a>
@@ -23,7 +23,7 @@
                         class="px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700">
                     Delete
                 </button>
-                <a href="{{ url_for('level_up_character', char_id=character.id) }}"
+                <a href="{{ url_for('characters.level_up_character', char_id=character.id) }}"
                    class="px-3 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
                      Level Up
                 </a>
@@ -93,7 +93,7 @@
                     <button id="closeNotesModal" class="text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
                 </div>
 
-                <form id="notesForm" method="POST" action="{{ url_for('edit_character', char_id=character.id) }}" class="space-y-4">
+                <form id="notesForm" method="POST" action="{{ url_for('characters.edit_character', char_id=character.id) }}" class="space-y-4">
                     <textarea name="notes" rows="8" placeholder="Add character backstory, personality traits, goals, or other notes..." class="w-full border rounded p-3 font-mono text-sm focus:outline-none focus:border-purple-500">{{ character.notes or '' }}</textarea>
                     
                     <div class="flex justify-end space-x-2">
@@ -181,7 +181,7 @@
         <div class="mb-6">
           <div class="flex justify-between items-center mb-3">
             <h2 class="font-semibold text-gray-700">Spell Slots</h2>
-            <form method="POST" action="{{ url_for('character_details', char_id=character.id) }}#spell-slots" style="display:inline;">
+            <form method="POST" action="{{ url_for('characters.character_details', char_id=character.id) }}#spell-slots" style="display:inline;">
               <button type="submit" name="action" value="reset_spells" class="text-sm px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Long Rest (Reset)</button>
             </form>
           </div>
@@ -335,7 +335,7 @@
             </div>
         </div>
 
-        <p><a href="{{ url_for('characters') }}" class="text-blue-600 hover:underline">Back to list</a></p>
+        <p><a href="{{ url_for('characters.characters') }}" class="text-blue-600 hover:underline">Back to list</a></p>
 
         <!-- Spell Stats Popup Modal -->
         <div id="spellStatsModal"
@@ -362,7 +362,7 @@
                     <span id="prepCount" class="ml-1 font-semibold">0</span>/<span id="prepMax">{{ max_prepared }}</span> selected.
                 </p>
 
-                <form method="POST" action="{{ url_for('prepare_spells', char_id=character.id) }}">
+                <form method="POST" action="{{ url_for('characters.prepare_spells', char_id=character.id) }}">
                     <div class="max-h-64 overflow-y-auto border rounded p-3">
                         {% set prepared_ids = prepared | map(attribute='id') | list %}
                         {% for sp in character.spells %}

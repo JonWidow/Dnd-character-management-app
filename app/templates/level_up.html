@@ -11,7 +11,7 @@
         <strong>Level {{ character.level + 1 }}</strong> as a <strong>{{ character.char_class.name }}</strong>.
     </p>
 
-    <form method="POST" action="{{ url_for('level_up_character', char_id=character.id) }}">
+    <form method="POST" action="{{ url_for('characters.level_up_character', char_id=character.id) }}">
         <!-- Ability Score Improvement (ASI) / Feat -->
         {% if asi_options or available_feats %}
             <div class="mb-6 p-4 border rounded bg-gray-50">
@@ -87,7 +87,7 @@
 
         <!-- Submit -->
         <div class="flex justify-end space-x-2">
-            <a href="{{ url_for('character_details', char_id=character.id) }}"
+            <a href="{{ url_for('characters.character_details', char_id=character.id) }}"
                class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</a>
             <button type="submit"
                     class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">
