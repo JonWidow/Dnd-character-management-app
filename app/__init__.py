@@ -422,14 +422,13 @@ def get_spells():
 def global_search():
     """Global search across spells, classes, subclasses, races, feats, and features."""
     query = request.args.get('q', '').strip()
-    filters = request.args.getlist('filter')  # e.g., ['spells', 'classes', 'feats']
+    filters = request.args.getlist('filter')
     
     if not query:
         return jsonify({"spells": [], "classes": [], "subclasses": [], "races": [], "feats": [], "features": []})
     
     results = {}
     
-    # Search Spells
     if not filters or 'spells' in filters:
         spells = Spell.query.filter(Spell.name.ilike(f'%{query}%')).limit(10).all()
         results['spells'] = [
@@ -437,7 +436,6 @@ def global_search():
             for s in spells
         ]
     
-    # Search Classes
     if not filters or 'classes' in filters:
         classes = CharacterClassModel.query.filter(CharacterClassModel.name.ilike(f'%{query}%')).limit(10).all()
         results['classes'] = [
@@ -445,7 +443,6 @@ def global_search():
             for c in classes
         ]
     
-    # Search Subclasses
     if not filters or 'subclasses' in filters:
         subclasses = SubclassModel.query.filter(SubclassModel.name.ilike(f'%{query}%')).limit(10).all()
         results['subclasses'] = [
@@ -453,7 +450,6 @@ def global_search():
             for s in subclasses
         ]
     
-    # Search Races
     if not filters or 'races' in filters:
         races = RaceModel.query.filter(RaceModel.name.ilike(f'%{query}%')).limit(10).all()
         results['races'] = [
@@ -461,7 +457,6 @@ def global_search():
             for r in races
         ]
     
-    # Search Feats
     if not filters or 'feats' in filters:
         feats = Feat.query.filter(Feat.name.ilike(f'%{query}%')).limit(10).all()
         results['feats'] = [
@@ -469,7 +464,6 @@ def global_search():
             for f in feats
         ]
     
-    # Search Features (Class & Subclass)
     if not filters or 'features' in filters:
         class_features = CharacterClassFeature.query.filter(CharacterClassFeature.name.ilike(f'%{query}%')).limit(5).all()
         subclass_features = SubclassFeature.query.filter(SubclassFeature.name.ilike(f'%{query}%')).limit(5).all()
@@ -493,6 +487,20 @@ def global_search():
         results['features'] = features
     
     return jsonify(results)
+
+@app.route('/features/<int:feature_id>')
+def feature_details(feature_id: int):
+    feat = CharacterClassFeature.query.get_or_404(feature_id)
+    ctx = {
+        "id": feat.id,
+        "name": feat.name,
+        "level": feat.level,
+        "description": feat.description or "",
+        "uses": feat.uses or "",
+        "scaling": feat.scaling or {},
+        "class_name": feat.character_class.name if feat.character_class else "",
+    }
+    return render_template('feature_details.html', feature=ctx)
 
 @app.route('/spells/<int:spell_id>')
 def spell_details(spell_id):
