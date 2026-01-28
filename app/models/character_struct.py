@@ -28,6 +28,7 @@ class CharacterClassModel(db.Model):
     hit_die = db.Column(db.Integer, nullable=False)
     spellcasting_ability = db.Column(db.String(3))
     prepares_spells = db.Column(db.Boolean, default=False)
+    chooses_spells_to_know = db.Column(db.Boolean, default=False)  # For Bard, Sorcerer, Warlock, Wizard
     description = db.Column(db.Text)
     subclass_unlock_level = db.Column(db.Integer, default=3)
     

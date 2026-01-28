@@ -236,12 +236,20 @@
                         {% endif %}
                     {% endif %}
                 </h2>
-                {% if character.spells and character.spells|length > 0 %}
-                    <button id="prepareSpellsBtn"
-                            class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-                        Prepare
-                    </button>
-                {% endif %}
+                <div class="flex gap-2">
+                    {% if character.char_class and character.char_class.chooses_spells_to_know %}
+                        <button id="manageKnownBtn"
+                                class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Manage Known
+                        </button>
+                    {% endif %}
+                    {% if character.spells and character.spells|length > 0 %}
+                        <button id="prepareSpellsBtn"
+                                class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                            Prepare
+                        </button>
+                    {% endif %}
+                </div>
             </div>
 
             {% if character.spells and character.spells|length > 0 %}
@@ -329,6 +337,69 @@
                 <p>Spells You Can Prepare: <span class="font-bold">{{ max_prepared }}</span></p>
             </div>
         </div>
+
+        <!-- Manage Known Spells Modal (Tabbed) -->
+        {% if character.char_class and character.char_class.chooses_spells_to_know %}
+        <div id="manageKnownModal"
+             class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
+            <div class="rounded-lg shadow-md w-full max-w-2xl p-5 relative max-h-96 overflow-y-auto" style="background-color: #fafbfc;">
+                <button id="closeManageKnown"
+                        class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
+                <h3 class="text-lg font-semibold mb-3">Select Known Spells</h3>
+
+                <p class="text-sm text-gray-600 mb-4">
+                    Choose which spells your character knows.
+                    <span id="knownCount" class="ml-1 font-semibold">{{ character.spells|length }}</span> selected.
+                </p>
+
+                <!-- Tabs for spell levels -->
+                {% set available_by_level = {} %}
+                {% for sp in character.char_class.spells %}
+                    {% if available_by_level.update({sp.level: available_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+                {% endfor %}
+
+                <div class="flex border-b mb-4 flex-wrap gap-2">
+                    {% for level in range(0, 10) %}
+                        {% if available_by_level.get(level) %}
+                            <button type="button" class="known-spell-tab px-3 py-2 font-medium text-sm {% if level == 0 %}bg-blue-600 text-white{% else %}bg-gray-200 hover:bg-gray-300{% endif %}" data-level="{{ level }}">
+                                {% if level == 0 %}Cantrips{% else %}Level {{ level }}{% endif %}
+                            </button>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <form method="POST" action="{{ url_for('characters.manage_known_spells', char_id=character.id) }}">
+                    <!-- Tab Content -->
+                    {% for level in range(0, 10) %}
+                        {% if available_by_level.get(level) %}
+                            <div id="known-spell-level-{{ level }}" class="known-spell-content {% if level != 0 %}hidden{% endif %} max-h-48 overflow-y-auto border rounded p-3 mb-4">
+                                {% set known_ids = character.spells | map(attribute='id') | list %}
+                                {% for sp in available_by_level[level] | sort(attribute='name') %}
+                                    <label class="flex items-center justify-between py-2 hover:bg-gray-100 px-2 rounded">
+                                        <span>{{ sp.name }}</span>
+                                        <input type="checkbox"
+                                               name="known_spells"
+                                               value="{{ sp.id }}"
+                                               class="known-checkbox"
+                                               {% if sp.id in known_ids %}checked{% endif %}>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancelManageKnown"
+                                class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
+                        <button type="submit"
+                                class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                            Save Known Spells
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Prepare Spells Modal (Tabbed) -->
         <div id="prepareSpellsModal"
@@ -451,6 +522,47 @@
             openStats?.addEventListener("click", () => statsModal.classList.remove("hidden"));
             closeStats?.addEventListener("click", () => statsModal.classList.add("hidden"));
             statsModal?.addEventListener("click", (e) => { if (e.target === statsModal) statsModal.classList.add("hidden"); });
+
+            // Manage Known Spells modal (Tabbed)
+            const manageKnownModal = document.getElementById("manageKnownModal");
+            const openManageKnown = document.getElementById("manageKnownBtn");
+            const closeManageKnown = document.getElementById("closeManageKnown");
+            const cancelManageKnown = document.getElementById("cancelManageKnown");
+            const knownCheckboxes = Array.from(document.querySelectorAll(".known-checkbox"));
+            const knownCountEl = document.getElementById("knownCount");
+            
+            function updateKnownCount() { knownCountEl.textContent = knownCheckboxes.filter(cb => cb.checked).length; }
+            
+            openManageKnown?.addEventListener("click", () => { updateKnownCount(); manageKnownModal.classList.remove("hidden"); });
+            closeManageKnown?.addEventListener("click", () => manageKnownModal.classList.add("hidden"));
+            cancelManageKnown?.addEventListener("click", () => manageKnownModal.classList.add("hidden"));
+            manageKnownModal?.addEventListener("click", (e) => { if (e.target === manageKnownModal) manageKnownModal.classList.add("hidden"); });
+            knownCheckboxes.forEach(cb => cb.addEventListener("change", updateKnownCount));
+
+            // Known Spells tabs (in modal)
+            const knownSpellTabs = document.querySelectorAll('.known-spell-tab');
+            knownSpellTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const level = tab.dataset.level;
+
+                    // Hide all contents
+                    document.querySelectorAll('.known-spell-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Remove active style from all tabs
+                    knownSpellTabs.forEach(t => {
+                        t.classList.remove('bg-blue-600', 'text-white');
+                        t.classList.add('bg-gray-200');
+                    });
+
+                    // Show selected content and style tab
+                    document.getElementById(`known-spell-level-${level}`).classList.remove('hidden');
+                    tab.classList.remove('bg-gray-200');
+                    tab.classList.add('bg-blue-600', 'text-white');
+                });
+            });
 
             // Prepare Spells modal (Tabbed)
             const prepareModal = document.getElementById("prepareSpellsModal");

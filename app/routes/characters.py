@@ -3,6 +3,7 @@ from flask import Blueprint, render_template, request, jsonify, abort, redirect,
 from flask_login import login_required, current_user
 from sqlalchemy import func
 from app.models import db, Character, Spell, CharacterClassModel, RaceModel, SubclassModel, Feat, CharacterClassFeature, RaceFeature, SubclassFeature
+from app.models.character_struct import ClassLevel
 from app.models.spell_slots import CharacterSpellSlot
 
 characters_bp = Blueprint('characters', __name__, url_prefix='')
@@ -378,6 +379,60 @@ def level_up_character(char_id):
         db.session.commit()
         flash(f"{character.name} is now level {character.level}!", "success")
         return redirect(url_for('characters.character_details', char_id=character.id))
+
+
+@characters_bp.route("/characters/<int:char_id>/manage_known_spells", methods=["POST"])
+@login_required
+def manage_known_spells(char_id: int):
+    """Update which spells a character knows (for classes that choose spells)."""
+    char = Character.query.get_or_404(char_id)
+    
+    if char.user_id != current_user.id and not current_user.is_admin:
+        abort(403)
+    
+    cls = char.character_class_model
+    if not cls or not cls.chooses_spells_to_know:
+        flash("This class does not choose spells to know.", "warning")
+        return redirect(url_for('characters.character_details', char_id=char.id))
+    
+    ids = request.form.getlist("known_spells")
+    ids_int = []
+    for x in ids:
+        try:
+            ids_int.append(int(x))
+        except Exception:
+            pass
+
+    # Get available spells for this class
+    available_ids = {s.id for s in (cls.spells or [])}
+    ids_int = [i for i in ids_int if i in available_ids]
+    
+    # Calculate max spells known for this level
+    max_known = 0
+    if cls:
+        # This should ideally come from ClassLevel.spells_known
+        # For now, use a simple calculation or get from ClassLevel
+        class_level = db.session.query(ClassLevel).filter_by(
+            class_id=cls.id,
+            level=char.level
+        ).first()
+        if class_level and class_level.spells_known:
+            max_known = class_level.spells_known
+    
+    if max_known and len(ids_int) > max_known:
+        ids_int = ids_int[:max_known]
+        flash(f"Known spell limit reached ({max_known}). Extra selections were ignored.", "warning")
+    
+    chosen = Spell.query.filter(Spell.id.in_(ids_int)).all()
+    char.spells.clear()
+    char.spells.extend(chosen)
+    
+    # If any prepared spells are no longer known, remove them
+    char.prepared_spells[:] = [s for s in char.prepared_spells if s in chosen]
+    
+    db.session.commit()
+    flash("Known spells updated.", "success")
+    return redirect(url_for("characters.character_details", char_id=char.id))
 
 
 @characters_bp.route("/characters/<int:char_id>/prepare_spells", methods=["POST"])
