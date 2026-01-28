@@ -1,11 +1,11 @@
 // grid.js – core grid setup
 
-// ----- CONSTANTS -----
+// CONSTANTS
 export const CELL_SIZE = 50;
 export const GRID_WIDTH = 40;
 export const GRID_HEIGHT = 40;
 
-// ----- CONTAINER -----
+// CONTAINER
 export const container = document.getElementById("grid-container");
 
 // Ensure the container has some height
@@ -34,7 +34,7 @@ stage.add(assetLayer);  // Assets behind everything else
 stage.add(debugLayer);
 stage.add(tokenLayer);  // Tokens on top
 
-// ----- ASSET PLACEMENT -----
+// ASSET PLACEMENT
 export let assetPlacementMode = false;
 export let selectedAssetPath = null;
 
@@ -42,17 +42,15 @@ export function setAssetPlacementMode(assetPath) {
     selectedAssetPath = assetPath;
     assetPlacementMode = true;
     container.style.cursor = 'crosshair';
-    console.log('Asset placement mode enabled for:', assetPath);
 }
 
 export function disableAssetPlacementMode() {
     assetPlacementMode = false;
     selectedAssetPath = null;
     container.style.cursor = 'default';
-    console.log('Asset placement mode disabled');
 }
 
-// ----- DRAW GRID -----
+// DRAW GRID
 export function drawDebugGrid() {
     gridLayer.destroyChildren(); // clear previous
 
@@ -65,7 +63,7 @@ export function drawDebugGrid() {
         fill: "#3a3a3a"
     }));
 
-    // vertical lines - subtle light gray for professional appearance
+    // vertical lines
     for (let i = 0; i <= GRID_WIDTH; i++) {
         let x = i * CELL_SIZE;
         gridLayer.add(new Konva.Line({
@@ -76,7 +74,7 @@ export function drawDebugGrid() {
         }));
     }
 
-    // horizontal lines - subtle light gray for professional appearance
+    // horizontal lines
     for (let j = 0; j <= GRID_HEIGHT; j++) {
         let y = j * CELL_SIZE;
         gridLayer.add(new Konva.Line({
@@ -90,14 +88,14 @@ export function drawDebugGrid() {
     gridLayer.draw();
 }
 
-// ----- HANDLE WINDOW RESIZE -----
+// HANDLE WINDOW RESIZE
 window.addEventListener("resize", () => {
     stage.width(container.clientWidth);
     stage.height(container.clientHeight);
     stage.batchDraw();
 });
 
-// ----- ZOOM CONFIGURATION -----
+// ZOOM CONFIGURATION
 const ZOOM_CONFIG = {
     minScale: 0.3,
     maxScale: 3,
