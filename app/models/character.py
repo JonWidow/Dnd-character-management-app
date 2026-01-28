@@ -117,7 +117,8 @@ class Character(db.Model):
 
         return hp
 
-    def get_character_class_model(self):
+    @property
+    def character_class_model(self):
         """Get the CharacterClassModel for this character by looking up the class name."""
         from app.models.character_struct import CharacterClassModel
         if not self.char_class:

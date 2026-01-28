@@ -84,14 +84,6 @@ def ability_mod(score: int) -> int:
     except Exception:
         return 0
 
-def _class_row_for(character):
-    name = (character.char_class.name if character.char_class else "").strip()
-    if not name:
-        return None
-    return (CharacterClassModel.query
-            .filter(db.func.lower(CharacterClassModel.name) == db.func.lower(name))
-            .first())
-
 def _require_admin():
     """Helper to check admin access."""
     if not current_user.is_authenticated or not current_user.is_admin:
@@ -519,7 +511,7 @@ def character_details(char_id):
             flash('Spell slots reset on long rest!', 'success')
             return redirect(url_for('character_details', char_id=char_id))
 
-    cls = char.get_character_class_model()
+    cls = char.character_class_model
     known_spells_count = len(getattr(char, "spells", []) or [])
     max_prepared = 0
     prepared_spells = char.prepared_spells
@@ -771,7 +763,7 @@ def feat_details(feat_id):
 def edit_character(char_id: int):
     char = Character.query.get_or_404(char_id)
 
-    cls = char.get_character_class_model()
+    cls = char.character_class_model
 
     if request.method == 'POST':
         nm = request.form.get('name')
@@ -823,7 +815,7 @@ def edit_character(char_id: int):
             char.spells = chosen
 
         # Recalc max prepared & enforce prepared ⊆ known and cap
-        cls = char.get_character_class_model()
+        cls = char.character_class_model
         max_prepared = 0
         if cls and cls.prepares_spells:
             ability = (cls.spellcasting_ability or "").lower()
@@ -939,7 +931,7 @@ def level_up_character(char_id):
 def prepare_spells(char_id: int):
     char = Character.query.get_or_404(char_id)
 
-    cls = char.get_character_class_model()
+    cls = char.character_class_model
     max_prepared = 0
     if cls and cls.prepares_spells:
         ability = (cls.spellcasting_ability or "").lower()
