@@ -29,15 +29,14 @@ class CharacterClassModel(db.Model):
     spellcasting_ability = db.Column(db.String(3))
     prepares_spells = db.Column(db.Boolean, default=False)
     description = db.Column(db.Text)
-    subclass_unlock_level = db.Column(db.Integer, default=3)  # Most classes unlock at level 3
+    subclass_unlock_level = db.Column(db.Integer, default=3)
     
-    # Proficiencies stored as JSON lists
-    skill_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["Acrobatics", "Athletics"]
-    skill_choice_count = db.Column(db.Integer, default=0)  # How many skills to choose from the list
-    armor_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["light armor", "medium armor"]
-    weapon_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["simple melee weapons"]
-    tool_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["musical instruments"]
-    saving_throw_proficiencies = db.Column(db.JSON, default=list)  # e.g., ["STR", "CON"]
+    skill_proficiencies = db.Column(db.JSON, default=list)
+    skill_choice_count = db.Column(db.Integer, default=0)
+    armor_proficiencies = db.Column(db.JSON, default=list)
+    weapon_proficiencies = db.Column(db.JSON, default=list)
+    tool_proficiencies = db.Column(db.JSON, default=list)
+    saving_throw_proficiencies = db.Column(db.JSON, default=list)
 
     # IMPORTANT: name must be 'spells' to match Spell.classes back_populates
     spells = db.relationship('Spell', secondary='spell_classes', back_populates='classes')
@@ -86,22 +85,15 @@ class SubclassModel(db.Model):
 class SubclassFeature(db.Model):
     __tablename__ = 'subclass_features'
     id = db.Column(db.Integer, primary_key=True)
-    # e.g. "Empowered Evocation", "Arcane Recovery"
     name = db.Column(db.String(80), nullable=False)
-    # Level the feature becomes available
     level = db.Column(db.Integer, nullable=False)
-    # Full rules text
     description = db.Column(db.Text)
-    # Uses, recharges etc
     uses = db.Column(db.String(32))
-    # At higher levels
     scaling = db.Column(db.JSON, default=dict)
-    # Link to the subclass this feature belongs to
     subclass_id = db.Column(db.Integer, db.ForeignKey('subclasses.id'), nullable=False)
     __table_args__ = (
         db.UniqueConstraint('subclass_id', 'name', 'level', name='uq_feature_per_subclass_level'),
     )
-    # Lists feature's choices
     choices = db.Column(db.JSON, default=list)
 
 
@@ -110,15 +102,10 @@ class CharacterClassFeature(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     # e.g. "Action Surge", "Channel Divinity"
     name = db.Column(db.String(80), nullable=False)
-    # Level the feature becomes available
     level = db.Column(db.Integer, nullable=False)
-    # Full rules text
     description = db.Column(db.Text)
-    # Uses, recharges etc
     uses = db.Column(db.String(32))
-    # At higher levels
     scaling = db.Column(db.JSON, default=dict)
-    # Link to the character class this feature belongs to
     class_id = db.Column(db.Integer, db.ForeignKey('character_classes.id'), nullable=False)
     character_class = db.relationship(
         'CharacterClassModel',
@@ -128,13 +115,7 @@ class CharacterClassFeature(db.Model):
         db.UniqueConstraint('class_id', 'name', 'level', name='uq_feature_per_class_level'),
     )
 
-    # Lists feature's choices. Needs to be expanded upon.
     choices = db.Column(db.JSON, default=list)
-
-    # Optional metadata you may want later:
-             # e.g. "PB/day", "1/short rest"
-    # 
-
 
 class Feat(db.Model):
     __tablename__ = 'feat'

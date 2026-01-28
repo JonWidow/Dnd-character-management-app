@@ -8,7 +8,6 @@ character_spells = db.Table(
     db.Column('spell_id', db.Integer, db.ForeignKey('spell.id'), primary_key=True),
 )
 
-# NEW: Character ⇄ Spell (prepared spells)
 character_prepared_spells = db.Table(
     'character_prepared_spells',
     db.Column('character_id', db.Integer, db.ForeignKey('character.id'), primary_key=True),
@@ -40,7 +39,6 @@ class Character(db.Model):
     race = db.Column(db.String(50), nullable=False)
     level = db.Column(db.Integer, default=1)
     
-    # Subclass relationship
     subclass_id = db.Column(db.Integer, db.ForeignKey('subclasses.id'), nullable=True)
 
     str_sc = db.Column(db.Integer, default=10)
@@ -54,9 +52,8 @@ class Character(db.Model):
     current_hp = db.Column(db.Integer, default=0)
     armor_class = db.Column(db.Integer, default=10)
     
-    # New fields for favorites and notes
     is_favorite = db.Column(db.Boolean, default=False)
-    notes = db.Column(db.Text, default='')  # Character notes/backstory
+    notes = db.Column(db.Text, default='')
 
     spells = db.relationship('Spell', secondary='character_spells', back_populates='known_by')
 
@@ -69,7 +66,6 @@ class Character(db.Model):
     def __init__(self, name, char_class, race, ability_scores=None, level=1):
         self.name = name
 
-        # Accept either string or model
         if isinstance(char_class, str):
             self.char_class_name = char_class
         else:
@@ -95,7 +91,6 @@ class Character(db.Model):
     def sc_to_mod(self, score):
         return (score - 10) // 2
 
-    # NEW: prepared spells (separate from known spells)
     prepared_spells = db.relationship(
         'Spell',
         secondary='character_prepared_spells',
