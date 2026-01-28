@@ -284,7 +284,7 @@ def add_character():
             con_mod = new_char.sc_to_mod(new_char.con_sc)
             hit_die_val = int(char_class_model.hit_die.replace('d', '')) if 'd' in str(char_class_model.hit_die) else char_class_model.hit_die
             # HP = hit_die (level 1) + (level - 1) * average_hit_die + con_mod * level
-            avg_hit_die = (hit_die_val + 1) // 2  # Average roll (e.g., d8 = 5)
+            avg_hit_die = (hit_die_val // 2) + 1  # Average roll (e.g., d8 = 5, d6 = 4)
             new_char.max_hp = hit_die_val + (level - 1) * avg_hit_die + con_mod * level
             new_char.current_hp = new_char.max_hp
         
@@ -791,10 +791,8 @@ def edit_character(char_id: int):
                 if char.char_class:
                     con_mod = char.sc_to_mod(char.con_sc)
                     hit_die_val = int(char.char_class.hit_die.replace('d', '')) if 'd' in str(char.char_class.hit_die) else char.char_class.hit_die
-                    # HP = hit_die + (level - 1) * (hit_die / 2 or average) + con_mod * level
-                    # Simplified: HP increases by average hit die per level (rounded up)
-                    # For now, recalculate total HP as: first level gets full hit die, subsequent levels get hit_die/2 average
-                    avg_hit_die = (hit_die_val + 1) // 2  # Average roll (e.g., d8 = 5)
+                    # HP = hit_die + (level - 1) * (hit_die / 2 + 1) + con_mod * level
+                    avg_hit_die = (hit_die_val // 2) + 1  # Average roll (e.g., d8 = 5, d6 = 4)
                     char.max_hp = hit_die_val + (lvl - 1) * avg_hit_die + con_mod * lvl
                     char.current_hp = char.max_hp
 
