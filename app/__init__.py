@@ -504,6 +504,10 @@ def feat_details(feat_id):
     feat = Feat.query.get_or_404(feat_id)
     return render_template('feat_details.html', feat=feat)
 
+@app.route('/search')
+def search_page():
+    return render_template('search.html')
+
 @app.route("/race/<race_name>")
 def show_race(race_name):
     race = RaceModel.query.filter_by(name=race_name).first_or_404()
