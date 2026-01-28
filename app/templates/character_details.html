@@ -221,89 +221,70 @@
 
 
 
-        <!-- Prepared Spells -->
+        <!-- Character Spells (Unified) -->
         {% set prepared = prepared_spells if prepared_spells is defined else [] %}
+        {% set prepared_ids = prepared | map(attribute='id') | list %}
         <div class="mb-6">
             <div class="flex items-center justify-between mb-2">
                 <h2 class="font-semibold text-gray-700">
-                    Prepared Spells
+                    Known Spells 
                     {% if max_prepared > 0 %}
-                        <span class="text-sm text-gray-500">({{ prepared|length }}/{{ max_prepared }})</span>
+                        {% if prepared|length == max_prepared %}
+                            (All prepared)
+                        {% else %}
+                            (prepare {{ max_prepared - prepared|length }})
+                        {% endif %}
                     {% endif %}
                 </h2>
-                {% if max_prepared > 0 %}
-                <button id="managePreparedBtn"
-                        class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
-                    Manage
-                </button>
+                {% if character.spells and character.spells|length > 0 %}
+                    <button id="prepareSpellsBtn"
+                            class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
+                        Prepare
+                    </button>
                 {% endif %}
             </div>
 
-            {% if prepared and prepared|length > 0 %}
-                <!-- Organize prepared spells by level -->
-                {% set prepared_by_level = {} %}
-                {% for sp in prepared %}
-                  {% if prepared_by_level.update({sp.level: prepared_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+            {% if character.spells and character.spells|length > 0 %}
+                <!-- Organize all known spells by level -->
+                {% set known_by_level = {} %}
+                {% for sp in character.spells %}
+                    {% if known_by_level.update({sp.level: known_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
                 {% endfor %}
 
                 <!-- Tabs -->
                 <div class="flex border-b mb-4 flex-wrap gap-2">
-                  {% for level in range(0, 10) %}
-                    {% if prepared_by_level.get(level) %}
-                      <button type="button" class="prepared-tab px-3 py-2 font-medium text-sm {% if level == 0 %}bg-blue-600 text-white{% else %}bg-gray-200 hover:bg-gray-300{% endif %}" data-level="{{ level }}">
-                        {% if level == 0 %}Cantrips{% else %}Level {{ level }}{% endif %}
-                      </button>
-                    {% endif %}
-                  {% endfor %}
+                    {% for level in range(0, 10) %}
+                        {% if known_by_level.get(level) %}
+                            <button type="button" class="spell-tab px-3 py-2 font-medium text-sm {% if level == 0 %}bg-blue-600 text-white{% else %}bg-gray-200 hover:bg-gray-300{% endif %}" data-level="{{ level }}">
+                                {% if level == 0 %}Cantrips{% else %}Level {{ level }}{% endif %}
+                            </button>
+                        {% endif %}
+                    {% endfor %}
                 </div>
 
                 <!-- Tab Content -->
                 {% for level in range(0, 10) %}
-                  {% if prepared_by_level.get(level) %}
-                    <div id="prepared-level-{{ level }}" class="prepared-content {% if level != 0 %}hidden{% endif %}">
-                      <ul class="list-disc list-inside">
-                        {% for sp in prepared_by_level[level] | sort(attribute='name') %}
-                          <li>
-                            <a href="{{ url_for('spell_details', spell_id=sp.id) }}"
-                               class="text-blue-600 hover:underline">
-                                {{ sp.name }}
-                            </a>
-                          </li>
-                        {% endfor %}
-                      </ul>
-                    </div>
-                  {% endif %}
+                    {% if known_by_level.get(level) %}
+                        <div id="spell-level-{{ level }}" class="spell-content {% if level != 0 %}hidden{% endif %}">
+                            <ul class="list-disc list-inside space-y-1">
+                                {% for sp in known_by_level[level] | sort(attribute='name') %}
+                                    <li class="{% if sp.id in prepared_ids %}font-semibold text-purple-700 bg-purple-50 px-2 py-1 rounded{% endif %}">
+                                        <a href="{{ url_for('spell_details', spell_id=sp.id) }}"
+                                           class="{% if sp.id in prepared_ids %}text-purple-700{% else %}text-blue-600{% endif %} hover:underline">
+                                            {{ sp.name }}
+                                        </a>
+                                        {% if sp.id in prepared_ids %}
+                                            <span class="ml-1 text-xs bg-purple-600 text-white px-2 py-0.5 rounded">✓ Prepared</span>
+                                        {% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
                 {% endfor %}
             {% else %}
-                <p class="text-sm text-gray-500 italic">No spells prepared.</p>
+                <p class="text-sm text-gray-500 italic">No known spells yet.</p>
             {% endif %}
-        </div>
-
-        <!-- Known Spells (Collapsible) -->
-        <div class="mb-6 border rounded-md">
-            <button type="button" id="toggleKnownSpells"
-                    class="w-full flex justify-between items-center px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-t-md">
-                <span class="font-semibold text-gray-700">Known Spells</span>
-                <svg id="knownArrow" xmlns="http://www.w3.org/2000/svg" fill="none"
-                     viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"
-                     class="w-4 h-4 transform transition-transform duration-200">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-            </button>
-
-            <div id="knownSpellsSection" class="hidden p-4">
-                <ul class="list-disc list-inside">
-                    {% for spell in character.spells %}
-                        <li>
-                            <a href="{{ url_for('spell_details', spell_id=spell.id) }}" class="text-blue-600 hover:underline">
-                                {{ spell.name }} (Level {{ spell.level }})
-                            </a>
-                        </li>
-                    {% else %}
-                        <li class="text-gray-500 italic">No known spells yet.</li>
-                    {% endfor %}
-                </ul>
-            </div>
         </div>
 
         <!-- Feats (Collapsible) -->
@@ -349,38 +330,57 @@
             </div>
         </div>
 
-        <!-- Manage Prepared Spells Modal -->
-        <div id="managePreparedModal"
+        <!-- Prepare Spells Modal (Tabbed) -->
+        <div id="prepareSpellsModal"
              class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
-            <div class="rounded-lg shadow-md w-full max-w-lg p-5 relative" style="background-color: #fafbfc;">
-                <button id="closeManagePrepared"
+            <div class="rounded-lg shadow-md w-full max-w-2xl p-5 relative max-h-96 overflow-y-auto" style="background-color: #fafbfc;">
+                <button id="closePrepareSpells"
                         class="absolute top-2 right-3 text-gray-400 hover:text-gray-600 font-bold text-lg">×</button>
                 <h3 class="text-lg font-semibold mb-3">Select Prepared Spells</h3>
 
-                <p class="text-sm text-gray-600 mb-2">
+                <p class="text-sm text-gray-600 mb-4">
                     You can prepare up to <span class="font-semibold">{{ max_prepared }}</span> spells.
-                    <span id="prepCount" class="ml-1 font-semibold">0</span>/<span id="prepMax">{{ max_prepared }}</span> selected.
+                    <span id="prepCount" class="ml-1 font-semibold">{{ prepared|length }}</span>/<span id="prepMax">{{ max_prepared }}</span> selected.
                 </p>
 
-                <form method="POST" action="{{ url_for('characters.prepare_spells', char_id=character.id) }}">
-                    <div class="max-h-64 overflow-y-auto border rounded p-3">
-                        {% set prepared_ids = prepared | map(attribute='id') | list %}
-                        {% for sp in character.spells %}
-                            <label class="flex items-center justify-between py-1">
-                                <span>Lv {{ sp.level }} — {{ sp.name }}</span>
-                                <input type="checkbox"
-                                       name="prepared_spells"
-                                       value="{{ sp.id }}"
-                                       class="prep-checkbox"
-                                       {% if sp.id in prepared_ids %}checked{% endif %}>
-                            </label>
-                        {% else %}
-                            <p class="text-sm text-gray-500 italic">No known spells to prepare.</p>
-                        {% endfor %}
-                    </div>
+                <!-- Tabs for spell levels -->
+                {% set known_by_level = {} %}
+                {% for sp in character.spells %}
+                    {% if known_by_level.update({sp.level: known_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+                {% endfor %}
 
-                    <div class="mt-4 flex justify-end space-x-2">
-                        <button type="button" id="cancelPrepared"
+                <div class="flex border-b mb-4 flex-wrap gap-2">
+                    {% for level in range(0, 10) %}
+                        {% if known_by_level.get(level) %}
+                            <button type="button" class="prep-spell-tab px-3 py-2 font-medium text-sm {% if level == 0 %}bg-blue-600 text-white{% else %}bg-gray-200 hover:bg-gray-300{% endif %}" data-level="{{ level }}">
+                                {% if level == 0 %}Cantrips{% else %}Level {{ level }}{% endif %}
+                            </button>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <form method="POST" action="{{ url_for('characters.prepare_spells', char_id=character.id) }}">
+                    <!-- Tab Content -->
+                    {% for level in range(0, 10) %}
+                        {% if known_by_level.get(level) %}
+                            <div id="prep-spell-level-{{ level }}" class="prep-spell-content {% if level != 0 %}hidden{% endif %} max-h-48 overflow-y-auto border rounded p-3 mb-4">
+                                {% set prepared_ids = prepared | map(attribute='id') | list %}
+                                {% for sp in known_by_level[level] | sort(attribute='name') %}
+                                    <label class="flex items-center justify-between py-2 hover:bg-gray-100 px-2 rounded">
+                                        <span>{{ sp.name }}</span>
+                                        <input type="checkbox"
+                                               name="prepared_spells"
+                                               value="{{ sp.id }}"
+                                               class="prep-checkbox"
+                                               {% if sp.id in prepared_ids %}checked{% endif %}>
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" id="cancelPrepareSpells"
                                 class="px-3 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancel</button>
                         <button type="submit"
                                 class="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">
@@ -452,14 +452,15 @@
             closeStats?.addEventListener("click", () => statsModal.classList.add("hidden"));
             statsModal?.addEventListener("click", (e) => { if (e.target === statsModal) statsModal.classList.add("hidden"); });
 
-            // Manage Prepared modal
-            const manageModal = document.getElementById("managePreparedModal");
-            const openManage = document.getElementById("managePreparedBtn");
-            const closeManage = document.getElementById("closeManagePrepared");
-            const cancelPrepared = document.getElementById("cancelPrepared");
+            // Prepare Spells modal (Tabbed)
+            const prepareModal = document.getElementById("prepareSpellsModal");
+            const openPrepare = document.getElementById("prepareSpellsBtn");
+            const closePrepare = document.getElementById("closePrepareSpells");
+            const cancelPrepareSpells = document.getElementById("cancelPrepareSpells");
             const checkboxes = Array.from(document.querySelectorAll(".prep-checkbox"));
             const prepCountEl = document.getElementById("prepCount");
             const prepMax = parseInt(document.getElementById("prepMax")?.textContent || "0", 10);
+            
             function updateCount() { prepCountEl.textContent = checkboxes.filter(cb => cb.checked).length; }
             function enforceLimit(e) {
                 const checked = checkboxes.filter(cb => cb.checked).length;
@@ -470,29 +471,61 @@
                 }
                 updateCount();
             }
-            openManage?.addEventListener("click", () => { updateCount(); manageModal.classList.remove("hidden"); });
-            closeManage?.addEventListener("click", () => manageModal.classList.add("hidden"));
-            cancelPrepared?.addEventListener("click", () => manageModal.classList.add("hidden"));
-            manageModal?.addEventListener("click", (e) => { if (e.target === manageModal) manageModal.classList.add("hidden"); });
+            
+            openPrepare?.addEventListener("click", () => { updateCount(); prepareModal.classList.remove("hidden"); });
+            closePrepare?.addEventListener("click", () => prepareModal.classList.add("hidden"));
+            cancelPrepareSpells?.addEventListener("click", () => prepareModal.classList.add("hidden"));
+            prepareModal?.addEventListener("click", (e) => { if (e.target === prepareModal) prepareModal.classList.add("hidden"); });
             checkboxes.forEach(cb => cb.addEventListener("change", enforceLimit));
-            updateCount();
 
-            // Known Spells collapsible
-            const toggleKnownSpells = document.getElementById('toggleKnownSpells');
-            const knownSpellsSection = document.getElementById('knownSpellsSection');
-            const knownArrow = document.getElementById('knownArrow');
-            toggleKnownSpells?.addEventListener('click', () => {
-                knownSpellsSection.classList.toggle('hidden');
-                knownArrow.classList.toggle('rotate-180');
+            // Spell tabs (Known Spells display)
+            const spellTabs = document.querySelectorAll('.spell-tab');
+            spellTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const level = tab.dataset.level;
+
+                    // Hide all contents
+                    document.querySelectorAll('.spell-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Remove active style from all tabs
+                    spellTabs.forEach(t => {
+                        t.classList.remove('bg-blue-600', 'text-white');
+                        t.classList.add('bg-gray-200');
+                    });
+
+                    // Show selected content and style tab
+                    document.getElementById(`spell-level-${level}`).classList.remove('hidden');
+                    tab.classList.remove('bg-gray-200');
+                    tab.classList.add('bg-blue-600', 'text-white');
+                });
             });
 
-            // Feats collapsible
-            const toggleFeats = document.getElementById('toggleFeats');
-            const featsSection = document.getElementById('featsSection');
-            const featsArrow = document.getElementById('featsArrow');
-            toggleFeats?.addEventListener('click', () => {
-                featsSection.classList.toggle('hidden');
-                featsArrow.classList.toggle('rotate-180');
+            // Prepare spells tabs (in modal)
+            const prepSpellTabs = document.querySelectorAll('.prep-spell-tab');
+            prepSpellTabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const level = tab.dataset.level;
+
+                    // Hide all contents
+                    document.querySelectorAll('.prep-spell-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+
+                    // Remove active style from all tabs
+                    prepSpellTabs.forEach(t => {
+                        t.classList.remove('bg-blue-600', 'text-white');
+                        t.classList.add('bg-gray-200');
+                    });
+
+                    // Show selected content and style tab
+                    document.getElementById(`prep-spell-level-${level}`).classList.remove('hidden');
+                    tab.classList.remove('bg-gray-200');
+                    tab.classList.add('bg-blue-600', 'text-white');
+                });
             });
 
             // Delete confirmation modal
@@ -504,6 +537,15 @@
             closeDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
             cancelDelete?.addEventListener('click', () => deleteModal.classList.add('hidden'));
             deleteModal?.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.classList.add('hidden'); });
+
+            // Feats collapsible
+            const toggleFeats = document.getElementById('toggleFeats');
+            const featsSection = document.getElementById('featsSection');
+            const featsArrow = document.getElementById('featsArrow');
+            toggleFeats?.addEventListener('click', () => {
+                featsSection.classList.toggle('hidden');
+                featsArrow.classList.toggle('rotate-180');
+            });
 
             // Notes modal
             const notesBtn = document.getElementById('notesBtn');

@@ -276,7 +276,8 @@ def edit_character(char_id: int):
         spell_ids = request.form.getlist('known_spells')
         if spell_ids is not None:
             chosen = Spell.query.filter(Spell.id.in_(list(map(int, spell_ids)))).all()
-            char.spells = chosen
+            char.spells.clear()
+            char.spells.extend(chosen)
 
         cls = char.character_class_model
         max_prepared = 0
