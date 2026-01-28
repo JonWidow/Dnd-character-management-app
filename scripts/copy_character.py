@@ -19,6 +19,10 @@ def copy_character_full(character_id: int, new_name: str):
         level=char.level,
         ability_scores=[char.str_sc, char.dex_sc, char.con_sc, char.int_sc, char.wis_sc, char.cha_sc]
     )
+    
+    # Copy additional fields
+    new_char.notes = char.notes
+    new_char.is_favorite = False  # Don't favorite the copy
 
     db.session.add(new_char)
     db.session.flush()  # assign new_char.id

@@ -114,6 +114,48 @@
             text-align: center;
         }
 
+        #gridDropdown {
+            padding: 8px 0 8px 20px;
+            margin: 0;
+            background: none;
+            border: none;
+            margin-left: 18px;
+        }
+
+        #gridDropdown.hidden {
+            display: none;
+        }
+
+        #createRoomBtn, #joinRoomBtn {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            text-white;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+            font-size: 0.95rem;
+            width: 100%;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: white;
+            text-align: left;
+            margin: 0;
+        }
+
+        #createRoomBtn:hover, #joinRoomBtn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left-color: #fff;
+            color: white;
+        }
+
+        #createRoomBtn i, #joinRoomBtn i {
+            width: 24px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
         .nav-section-title {
             padding: 16px 20px 8px;
             font-size: 0.75rem;
@@ -153,10 +195,19 @@
                     <i class="fas fa-users"></i>
                     <span>Characters</span>
                 </a>
-                <a href="{{ url_for('grid.grid_view', code='test') }}" class="nav-item {% if request.endpoint == 'grid.grid_view' %}active{% endif %}">
+                <button id="gridToggleBtn" class="nav-item w-full text-left {% if request.endpoint == 'grid.grid_view' %}active{% endif %}">
                     <i class="fas fa-gamepad"></i>
                     <span>Grid</span>
-                </a>
+                    <i class="fas fa-chevron-down ml-auto text-xs" id="gridChevron"></i>
+                </button>
+                <div id="gridDropdown" class="hidden ml-4 mt-2 space-y-2 pb-2">
+                    <button id="createRoomBtn" class="w-full text-left px-3 py-2 rounded text-white hover:bg-blue-500 transition text-sm">
+                        <i class="fas fa-plus mr-2"></i>Create Room
+                    </button>
+                    <button id="joinRoomBtn" class="w-full text-left px-3 py-2 rounded text-white hover:bg-blue-500 transition text-sm">
+                        <i class="fas fa-door-open mr-2"></i>Join Room
+                    </button>
+                </div>
                 <a href="{{ url_for('search_page') }}" class="nav-item {% if request.endpoint == 'search_page' %}active{% endif %}">
                     <i class="fas fa-wand-magic-sparkles"></i>
                     <span>Search</span>
@@ -199,6 +250,37 @@
         </nav>
     </aside>
 
+    <!-- Room Selection Modal -->
+    <div id="roomModal" class="fixed inset-0 bg-gray-900 bg-opacity-60 hidden flex items-center justify-center z-50">
+        <div class="rounded-lg shadow-lg w-full max-w-md p-6 mx-4" style="background-color: #fafbfc;">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6" id="roomModalTitle">Grid Room</h2>
+            
+            <!-- Create Room Tab -->
+            <div id="createRoomTab" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Room Name</label>
+                    <input type="text" id="createRoomInput" placeholder="Enter room name..." maxlength="50" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex gap-2">
+                    <button id="createRoomConfirmBtn" class="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Create</button>
+                    <button id="roomModalCancelBtn" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Cancel</button>
+                </div>
+            </div>
+            
+            <!-- Join Room Tab -->
+            <div id="joinRoomTab" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">Room Code</label>
+                    <input type="text" id="joinRoomInput" placeholder="Enter room code..." maxlength="20" class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-500">
+                </div>
+                <div class="flex gap-2">
+                    <button id="joinRoomConfirmBtn" class="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Join</button>
+                    <button id="roomModalCancelBtn2" class="flex-1 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Header -->
     <header class="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
         <div class="flex justify-between items-center p-4">
@@ -206,16 +288,31 @@
                 <button id="sidebarToggle" class="sidebar-toggle p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
-                <h1 class="text-2xl font-bold text-gray-800 hidden sm:block">
-                    <i class="fas fa-dice-d20 text-blue-600 mr-2"></i>D&D Manager
-                </h1>
+                <a href="{{ url_for('home') }}" class="text-decoration-none hover:opacity-80 transition">
+                    <h1 class="text-2xl font-bold text-gray-800 hidden sm:block">
+                        <i class="fas fa-dice-d20 text-blue-600 mr-2"></i>D&D Manager
+                    </h1>
+                </a>
+            </div>
+            
+            <!-- Grid Controls (Hidden by default, shown on grid page) -->
+            <div id="gridControls" class="hidden flex items-center gap-3">
+                <div class="character-input-wrapper">
+                    <input type="text" id="tokenName" placeholder="Character or token name" value="" class="px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <div id="characterDropdown"></div>
+                </div>
+                <input type="color" id="tokenColor" value="#ff6b6b" class="w-10 h-10 rounded-lg cursor-pointer">
+                <button id="addTokenBtn" class="px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition">➕ Add Token</button>
+                <button id="toggleAssetPanel" class="px-3 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition">
+                    <i class="fas fa-palette"></i> Assets
+                </button>
             </div>
             
             {% if current_user.is_authenticated %}
-                <div class="flex items-center gap-4">
+                <div id="userSection" class="flex items-center gap-4">
                     <div class="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg">
                         <i class="fas fa-user-circle text-gray-600"></i>
-                        <span class="text-gray-700 font-medium">{{ current_user.username }}</span>
+                        <span class="text-gray-700 font-medium hidden sm:inline">{{ current_user.username }}</span>
                     </div>
                     <form method="POST" action="{{ url_for('logout') }}" style="display:inline;">
                         <button type="submit" class="p-2 hover:bg-gray-100 rounded-lg text-gray-600 hover:text-gray-900 transition">
@@ -254,7 +351,10 @@
 
         // Load sidebar state from localStorage
         const sidebarHidden = localStorage.getItem('sidebarHidden') === 'true';
-        if (sidebarHidden && window.innerWidth >= 768) {
+        // On mobile, sidebar should always start hidden unless explicitly saved as shown
+        if (window.innerWidth < 768) {
+            sidebar.classList.add('hidden');
+        } else if (sidebarHidden) {
             sidebar.classList.add('hidden');
         }
         updateMainContentMargin();
@@ -265,12 +365,23 @@
             const isHidden = sidebar.classList.contains('hidden');
             localStorage.setItem('sidebarHidden', isHidden);
             updateMainContentMargin();
+            
+            // On mobile, make sure sidebar position is correct
+            if (window.innerWidth < 768) {
+                if (!isHidden) {
+                    sidebar.style.zIndex = '50';
+                }
+            }
         });
 
         // Close sidebar when clicking a link on mobile only
         const navItems = document.querySelectorAll('.nav-item');
         navItems.forEach(item => {
-            item.addEventListener('click', () => {
+            item.addEventListener('click', (e) => {
+                // Don't close sidebar if clicking the grid dropdown toggle button
+                if (item.id === 'gridToggleBtn') {
+                    return;
+                }
                 if (window.innerWidth < 768) {
                     sidebar.classList.add('hidden');
                 }
@@ -292,6 +403,104 @@
                 sidebar.classList.remove('hidden');
             }
             updateMainContentMargin();
+        });
+
+        // Grid room selection functionality
+        const gridToggleBtn = document.getElementById('gridToggleBtn');
+        const gridDropdown = document.getElementById('gridDropdown');
+        const gridChevron = document.getElementById('gridChevron');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+        const roomModal = document.getElementById('roomModal');
+        const createRoomTab = document.getElementById('createRoomTab');
+        const joinRoomTab = document.getElementById('joinRoomTab');
+        const createRoomInput = document.getElementById('createRoomInput');
+        const joinRoomInput = document.getElementById('joinRoomInput');
+        const createRoomConfirmBtn = document.getElementById('createRoomConfirmBtn');
+        const joinRoomConfirmBtn = document.getElementById('joinRoomConfirmBtn');
+        
+        // Toggle grid dropdown
+        gridToggleBtn?.addEventListener('click', () => {
+            gridDropdown.classList.toggle('hidden');
+            gridChevron.classList.toggle('rotate-180');
+        });
+        
+        // Close dropdown when clicking sidebar items
+        createRoomBtn?.addEventListener('click', () => {
+            gridDropdown.classList.add('hidden');
+            gridChevron.classList.remove('rotate-180');
+            showCreateRoomModal();
+        });
+        
+        joinRoomBtn?.addEventListener('click', () => {
+            gridDropdown.classList.add('hidden');
+            gridChevron.classList.remove('rotate-180');
+            showJoinRoomModal();
+        });
+        
+        function showCreateRoomModal() {
+            createRoomTab.classList.remove('hidden');
+            joinRoomTab.classList.add('hidden');
+            document.getElementById('roomModalTitle').textContent = 'Create Grid Room';
+            roomModal.classList.remove('hidden');
+            createRoomInput.focus();
+        }
+        
+        function showJoinRoomModal() {
+            createRoomTab.classList.add('hidden');
+            joinRoomTab.classList.remove('hidden');
+            document.getElementById('roomModalTitle').textContent = 'Join Grid Room';
+            roomModal.classList.remove('hidden');
+            joinRoomInput.focus();
+        }
+        
+        // Cancel buttons
+        document.querySelectorAll('[id$="roomModalCancelBtn"]').forEach(btn => {
+            btn?.addEventListener('click', () => {
+                roomModal.classList.add('hidden');
+            });
+        });
+        
+        // Create room
+        createRoomConfirmBtn?.addEventListener('click', () => {
+            const roomName = createRoomInput.value.trim();
+            if (roomName) {
+                // Generate a simple code from the room name (remove spaces and lowercase)
+                const code = roomName.toLowerCase().replace(/\s+/g, '-').substring(0, 20);
+                window.location.href = `{{ url_for('grid.grid_view', code='ROOMCODE') }}`.replace('ROOMCODE', code);
+            } else {
+                alert('Please enter a room name');
+            }
+        });
+        
+        // Join room
+        joinRoomConfirmBtn?.addEventListener('click', () => {
+            const roomCode = joinRoomInput.value.trim();
+            if (roomCode) {
+                window.location.href = `{{ url_for('grid.grid_view', code='ROOMCODE') }}`.replace('ROOMCODE', roomCode);
+            } else {
+                alert('Please enter a room code');
+            }
+        });
+        
+        // Allow Enter key to submit
+        createRoomInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                createRoomConfirmBtn?.click();
+            }
+        });
+        
+        joinRoomInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                joinRoomConfirmBtn?.click();
+            }
+        });
+        
+        // Close modal when clicking outside
+        roomModal?.addEventListener('click', (e) => {
+            if (e.target === roomModal) {
+                roomModal.classList.add('hidden');
+            }
         });
     </script>
 </body>

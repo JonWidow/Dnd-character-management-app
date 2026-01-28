@@ -157,33 +157,33 @@ container.addEventListener('touchmove', (e) => {
         const dy = touch2.clientY - touch1.clientY;
         const currentDistance = Math.sqrt(dx * dx + dy * dy);
         
-        if (lastDistance === 0) {
-            lastDistance = currentDistance;
+        if (lastDistance === 0 || lastDistance === currentDistance) {
             return;
         }
         
+        // Pinch center in screen space (relative to container)
+        const rect = container.getBoundingClientRect();
+        const pointerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+        const pointerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+        
         const oldScale = stage.scaleX();
-        const scaleFactor = currentDistance / lastDistance;
         const newScale = Math.max(
             ZOOM_CONFIG.minScale,
-            Math.min(ZOOM_CONFIG.maxScale, oldScale * scaleFactor)
+            Math.min(ZOOM_CONFIG.maxScale, oldScale * (currentDistance / lastDistance))
         );
         
-        // Get center point between two touches
-        const rect = container.getBoundingClientRect();
-        const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
-        const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+        const scaleFactor = newScale / oldScale;
         
-        const scaleChange = newScale / oldScale;
-        const newX = centerX - (centerX - stage.x()) * scaleChange;
-        const newY = centerY - (centerY - stage.y()) * scaleChange;
+        // Use exact same formula as wheel zoom
+        const newX = pointerX - (pointerX - stage.x()) * scaleFactor;
+        const newY = pointerY - (pointerY - stage.y()) * scaleFactor;
         
         stage.scaleX(newScale);
         stage.scaleY(newScale);
         stage.x(newX);
         stage.y(newY);
-        stage.batchDraw();
         
+        stage.batchDraw();
         lastDistance = currentDistance;
     }
 });

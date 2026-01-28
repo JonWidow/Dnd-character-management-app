@@ -212,6 +212,37 @@ export class AssetPlacementHandler {
             this.showAssetContextMenu(e.evt.clientX, e.evt.clientY, konvaImage);
         });
 
+        // Long press on mobile for context menu
+        let touchStartTime = 0;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        const LONG_PRESS_DURATION = 500; // milliseconds
+
+        konvaImage.on('touchstart', (e) => {
+            touchStartTime = Date.now();
+            const touch = e.evt.touches[0];
+            touchStartX = touch.clientX;
+            touchStartY = touch.clientY;
+        });
+
+        konvaImage.on('touchend', (e) => {
+            const touchDuration = Date.now() - touchStartTime;
+            const touch = e.evt.changedTouches[0];
+            const touchEndX = touch.clientX;
+            const touchEndY = touch.clientY;
+            
+            // Check if it was a long press (not a drag)
+            const dragDistance = Math.sqrt(
+                Math.pow(touchEndX - touchStartX, 2) + 
+                Math.pow(touchEndY - touchStartY, 2)
+            );
+            
+            if (touchDuration >= LONG_PRESS_DURATION && dragDistance < 10) {
+                e.evt.preventDefault();
+                this.showAssetContextMenu(touchEndX, touchEndY, konvaImage);
+            }
+        });
+
         // Snap to grid on drag end and save position
         konvaImage.on('dragend', () => {
             // Snap to grid based on asset dimensions

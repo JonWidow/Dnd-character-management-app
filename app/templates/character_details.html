@@ -107,10 +107,20 @@
         <!-- Hit Points & Armor Class -->
         <div class="flex gap-4 mb-6">
             <div class="flex-1">
-                <h2 class="font-semibold text-gray-700 mb-2 text-sm">Hit Points</h2>
-                <div class="p-3 bg-red-50 rounded border border-red-200">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="font-semibold text-gray-700 text-sm">Hit Points</h2>
+                    <button id="editHPBtn" class="text-xs px-2 py-1 bg-red-200 text-red-800 rounded hover:bg-red-300">Edit</button>
+                </div>
+                <div id="hpDisplay" class="p-3 bg-red-50 rounded border border-red-200 cursor-pointer hover:bg-red-100 transition">
                     <div class="text-lg font-bold text-red-700">
-                        {{ character.current_hp if character.current_hp is not none else 'N/A' }} / {{ character.max_hp if character.max_hp is not none else 'N/A' }} HP
+                        <span id="currentHPText">{{ character.current_hp if character.current_hp is not none else 'N/A' }}</span> / {{ character.max_hp if character.max_hp is not none else 'N/A' }} HP
+                    </div>
+                </div>
+                <div id="hpEdit" class="p-3 bg-red-50 rounded border border-red-200 hidden">
+                    <div class="flex gap-2">
+                        <input type="number" id="currentHPInput" value="{{ character.current_hp if character.current_hp is not none else 0 }}" min="0" max="{{ character.max_hp if character.max_hp is not none else 100 }}" class="flex-1 border border-red-300 rounded px-2 py-1">
+                        <button id="saveHPBtn" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-sm">Save</button>
+                        <button id="cancelHPBtn" class="px-3 py-1 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm">Cancel</button>
                     </div>
                 </div>
             </div>
@@ -516,6 +526,58 @@
             notesModal?.addEventListener('click', (e) => {
                 if (e.target === notesModal) {
                     notesModal.classList.add('hidden');
+                }
+            });
+
+            // HP editing
+            const editHPBtn = document.getElementById('editHPBtn');
+            const hpDisplay = document.getElementById('hpDisplay');
+            const hpEdit = document.getElementById('hpEdit');
+            const currentHPInput = document.getElementById('currentHPInput');
+            const saveHPBtn = document.getElementById('saveHPBtn');
+            const cancelHPBtn = document.getElementById('cancelHPBtn');
+            const currentHPText = document.getElementById('currentHPText');
+            
+            editHPBtn?.addEventListener('click', () => {
+                hpDisplay.classList.add('hidden');
+                hpEdit.classList.remove('hidden');
+                currentHPInput.focus();
+            });
+            
+            cancelHPBtn?.addEventListener('click', () => {
+                hpDisplay.classList.remove('hidden');
+                hpEdit.classList.add('hidden');
+            });
+            
+            saveHPBtn?.addEventListener('click', async () => {
+                const newHP = parseInt(currentHPInput.value) || 0;
+                const charId = {{ character.id }};
+                
+                try {
+                    const response = await fetch(`/grid/characters/${charId}/hp`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ current_hp: newHP })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    currentHPText.textContent = data.current_hp;
+                    hpDisplay.classList.remove('hidden');
+                    hpEdit.classList.add('hidden');
+                } catch (err) {
+                    console.error('Error updating HP:', err);
+                    alert('Failed to update HP');
+                }
+            });
+            
+            // Allow Enter key to save HP
+            currentHPInput?.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    saveHPBtn?.click();
                 }
             });
 

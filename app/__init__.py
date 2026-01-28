@@ -798,9 +798,9 @@ def edit_character(char_id: int):
                     char.max_hp = hit_die_val + (lvl - 1) * avg_hit_die + con_mod * lvl
                     char.current_hp = char.max_hp
 
-        # Handle notes
-        notes = request.form.get('notes', '')
-        char.notes = notes
+        # Handle notes - only update if explicitly provided in form
+        if 'notes' in request.form:
+            char.notes = request.form.get('notes', '')
 
         for key in ['str_sc','dex_sc','con_sc','int_sc','wis_sc','cha_sc']:
             val = request.form.get(key, type=int)

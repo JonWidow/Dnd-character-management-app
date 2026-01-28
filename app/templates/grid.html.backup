@@ -1,8 +1,9 @@
-{% extends "base.html" %}
-
-{% block title %}D&D Combat Grid{% endblock %}
-
-{% block head %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>D&D Combat Grid</title>
     <style>
         * {
             margin: 0;
@@ -36,6 +37,8 @@
             flex-shrink: 0;
             min-height: 70px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin-left: 260px;
+            margin-top: 80px;
             position: relative;
         }
 
@@ -179,7 +182,6 @@
             flex: 1;
             background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
             width: 100%;
-            height: 100%;
             overflow: hidden;
             box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.1);
         }
@@ -229,8 +231,7 @@
 
         @media (max-width: 768px) {
             #header {
-                flex-direction: column;
-                align-items: flex-start;
+                flex-wrap: wrap;
                 gap: 10px;
                 min-height: auto;
             }
@@ -399,64 +400,66 @@
             }
         }
     </style>
-{% endblock %}
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar">
+        <div class="nav-section" style="margin-bottom: 30px;">
+            <a href="{{ url_for('home') }}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="{{ url_for('characters') }}" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>Characters</span>
+            </a>
+            <button id="gridToggleBtn" class="nav-item active">
+                <i class="fas fa-gamepad"></i>
+                <span>Grid</span>
+                <i class="fas fa-chevron-down ml-auto text-xs" id="gridChevron"></i>
+            </button>
+            <div id="gridDropdown" class="hidden">
+                <button id="createRoomBtn">
+                    <i class="fas fa-plus"></i>Create Room
+                </button>
+                <button id="joinRoomBtn">
+                    <i class="fas fa-door-open"></i>Join Room
+                </button>
+            </div>
+            <a href="{{ url_for('search_page') }}" class="nav-item">
+                <i class="fas fa-wand-magic-sparkles"></i>
+                <span>Search</span>
+            </a>
+            <a href="{{ url_for('user_profile') }}" class="nav-item">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </a>
+        </div>
+    </aside>
 
-{% block content %}
-<!-- Override main-content padding for full-screen grid -->
-<style>
-    main.main-content {
-        padding: 0 !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        height: calc(100vh - 100px);
-        width: 100% !important;
-        flex: 1;
-    }
-    
-    /* Hide footer on grid page */
-    footer {
-        display: none;
-    }
-    
-    /* Show grid controls in header */
-    #gridControls {
-        display: flex !important;
-    }
-    
-    /* Hide user section on mobile when grid is active */
-    @media (max-width: 768px) {
-        #userSection {
-            display: none !important;
-        }
-        
-        #gridControls {
-            gap: 6px !important;
-            flex-wrap: wrap;
-            flex: 1;
-        }
-        
-        #gridControls input[type="text"] {
-            min-width: 120px;
-        }
-    }
-    
-    /* Update grid title display -->
-    #gridTitle {
-        margin-left: auto;
-        text-align: center;
-        flex: 1;
-    }
-</style>
-
-<!-- Grid Title in Header -->
-<div id="gridTitle" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 45; pointer-events: none;">
-    <h2 style="font-size: 18px; font-weight: bold; color: #1f2937;">⚔️ Combat Grid</h2>
-    <p style="font-size: 12px; color: #666; margin-top: -4px;">Code: {{ code }}</p>
-</div>
-
-<div id="container">
-    <div id="grid-container"></div>
-</div>
+    <div id="container">
+        <div id="header">
+            <button id="sidebarToggle" class="sidebar-toggle" style="margin-right: auto;">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="title">
+                <h1>⚔️ Combat Grid</h1>
+                <p>Code: {{ code }}</p>
+            </div>
+            <div class="controls">
+                <div class="character-input-wrapper">
+                    <input type="text" id="tokenName" placeholder="Character or token name" value="">
+                    <div id="characterDropdown"></div>
+                </div>
+                <input type="color" id="tokenColor" value="#ff6b6b">
+                <button id="addTokenBtn">➕ Add Token</button>
+                <button id="toggleAssetPanel" style="background: linear-gradient(135deg, #9932CC 0%, #8B008B 100%);">
+                    <i class="fas fa-palette"></i> Assets
+                </button>
+            </div>
+        </div>
+        <div id="grid-container"></div>
+    </div>
 
     <!-- Asset Panel -->
     {% include 'asset_panel.html' %}
@@ -860,8 +863,73 @@
             endDrag();
         });
 
-        // Grid-specific functionality only
-        // Show grid controls in header
-        document.getElementById('gridControls').classList.remove('hidden');
+        // Sidebar and Grid Room Selection
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        const container = document.getElementById('container');
+        const gridToggleBtn = document.getElementById('gridToggleBtn');
+        const gridDropdown = document.getElementById('gridDropdown');
+        const gridChevron = document.getElementById('gridChevron');
+        const createRoomBtn = document.getElementById('createRoomBtn');
+        const joinRoomBtn = document.getElementById('joinRoomBtn');
+
+        // Toggle sidebar
+        sidebarToggle?.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            container.classList.toggle('sidebar-collapsed');
+            if (window.innerWidth >= 768) {
+                document.querySelector('.grid-header').style.left = sidebar.classList.contains('hidden') ? '0' : '260px';
+            }
+        });
+
+        // Toggle grid dropdown
+        gridToggleBtn?.addEventListener('click', () => {
+            gridDropdown.classList.toggle('hidden');
+            gridChevron.classList.toggle('rotate-180');
+        });
+
+        // Close dropdown when sidebar items clicked
+        document.querySelectorAll('.nav-item:not(#gridToggleBtn)').forEach(item => {
+            item?.addEventListener('click', () => {
+                if (window.innerWidth < 768) {
+                    sidebar.classList.add('hidden');
+                    container.classList.add('sidebar-collapsed');
+                }
+            });
+        });
+
+        // Grid room buttons
+        createRoomBtn?.addEventListener('click', () => {
+            showCreateRoomModal();
+        });
+
+        joinRoomBtn?.addEventListener('click', () => {
+            showJoinRoomModal();
+        });
+
+        // Room Modal (create inline since base.html isn't extended)
+        function showCreateRoomModal() {
+            const roomName = prompt('Enter room name:');
+            if (roomName && roomName.trim()) {
+                const code = roomName.toLowerCase().replace(/\s+/g, '-').substring(0, 20);
+                window.location.href = `{{ url_for('grid.grid_view', code='ROOMCODE') }}`.replace('ROOMCODE', code);
+            }
+        }
+
+        function showJoinRoomModal() {
+            const roomCode = prompt('Enter room code:');
+            if (roomCode && roomCode.trim()) {
+                window.location.href = `{{ url_for('grid.grid_view', code='ROOMCODE') }}`.replace('ROOMCODE', roomCode);
+            }
+        }
+
+        // Close sidebar on mobile when resizing to desktop
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) {
+                sidebar.classList.remove('hidden');
+                container.classList.remove('sidebar-collapsed');
+            }
+        });
     </script>
-{% endblock %}
+</body>
+</html>
