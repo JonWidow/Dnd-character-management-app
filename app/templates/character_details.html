@@ -355,7 +355,9 @@
                 <!-- Tabs for spell levels -->
                 {% set available_by_level = {} %}
                 {% for sp in character.char_class.spells %}
-                    {% if available_by_level.update({sp.level: available_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+                    {% if sp.level <= max_spell_level %}
+                        {% if available_by_level.update({sp.level: available_by_level.get(sp.level, []) + [sp]}) %}{% endif %}
+                    {% endif %}
                 {% endfor %}
 
                 <div class="flex border-b mb-4 flex-wrap gap-2">

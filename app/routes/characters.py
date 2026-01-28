@@ -139,12 +139,19 @@ def character_details(char_id):
     else:
         feats = []
 
+    # Calculate max spell level based on spell slots
+    max_spell_level = 0
+    for slot in char.spell_slots:
+        if slot.total_slots > 0:
+            max_spell_level = max(max_spell_level, slot.level)
+
     return render_template('character_details.html',
                            character=char,
                            known_spells_count=known_spells_count,
                            max_prepared=max_prepared,
                            prepared_spells=prepared_spells,
-                           feats=feats)
+                           feats=feats,
+                           max_spell_level=max_spell_level)
 
 
 @characters_bp.route('/characters/<int:char_id>/delete', methods=['POST'])
