@@ -132,6 +132,37 @@ class Feat(db.Model):
     # Characters that have taken this feat
     known_by = db.relationship('Character', secondary='character_feats', backref='feats')
     
+    def can_take(self, character):
+        """Check if a character meets all prerequisites for this feat."""
+        if not self.prerequisites:
+            return True
+        
+        prereqs = self.prerequisites if isinstance(self.prerequisites, dict) else {}
+        
+        # Check class requirement
+        if prereqs.get('classes'):
+            char_class = character.character_class_model
+            if not char_class or char_class.name not in prereqs['classes']:
+                return False
+        
+        # Check ability score requirements (all must be met)
+        for ability_req in prereqs.get('ability_scores', []):
+            ability_attr = f"{ability_req['ability'].lower()}_sc"
+            if getattr(character, ability_attr, 10) < ability_req.get('minimum', 0):
+                return False
+        
+        # Check minimum level
+        if character.level < prereqs.get('minimum_level', 0):
+            return False
+        
+        # Check required feats
+        char_feat_names = {f.name for f in character.feats}
+        for required_feat in prereqs.get('required_feats', []):
+            if required_feat not in char_feat_names:
+                return False
+        
+        return True
+    
     def __repr__(self):
         return f"<Feat {self.name}>"
 

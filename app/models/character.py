@@ -173,6 +173,12 @@ class Character(db.Model):
 
         return slots
 
+    def eligible_feats(self):
+        """Return list of feats this character can take (filtered by prerequisites)."""
+        from app.models.character_struct import Feat
+        all_feats = Feat.query.all()
+        return [f for f in all_feats if f.can_take(self)]
+
     def sync_spell_slots(self):
         """
         Synchronize character spell slots with their class and current level.

@@ -352,8 +352,6 @@ def level_up_character(char_id):
 
         new_features = character.get_new_features_for_level() if hasattr(character, 'get_new_features_for_level') else []
         asi_options = character.get_asi_options() if hasattr(character, 'get_asi_options') else []
-        
-        available_feats = []
         new_level = character.level + 1
         ASI_LEVELS = {
             "Fighter": [4, 6, 8, 12, 14, 16, 19],
@@ -364,14 +362,17 @@ def level_up_character(char_id):
         
         if character.char_class and character.char_class.name in ASI_LEVELS:
             if new_level in ASI_LEVELS[character.char_class.name]:
-                available_feats = Feat.query.all()
+                available_feats = character.eligible_feats()
 
+        # For GET requests, no ASI level means no feat options
+        available_feats_get = character.eligible_feats() if available_feats else []
+        
         return render_template(
             'level_up.html',
             character=character,
             new_features=new_features,
             asi_options=asi_options,
-            available_feats=available_feats
+            available_feats=available_feats_get
         )
 
     if request.method == 'POST':
