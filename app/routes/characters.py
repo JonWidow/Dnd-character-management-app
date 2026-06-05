@@ -376,14 +376,21 @@ def level_up_character(char_id):
 
     if request.method == 'POST':
         asi_choice = request.form.get('asi_choice')
-        if asi_choice:
-            character.apply_asi_choice(int(asi_choice))
+        if asi_choice and asi_choice != 'feat':
+            if hasattr(character, 'apply_asi_choice'):
+                try:
+                    character.apply_asi_choice(int(asi_choice))
+                except (TypeError, ValueError):
+                    pass
 
         new_features = character.get_new_features_for_level() if hasattr(character, 'get_new_features_for_level') else []
         for feature in new_features:
             choice = request.form.get(f'feature_{feature.id}')
-            if choice:
-                character.apply_feature_choice(feature, int(choice))
+            if choice and hasattr(character, 'apply_feature_choice'):
+                try:
+                    character.apply_feature_choice(feature, int(choice))
+                except (TypeError, ValueError):
+                    pass
 
         feat_choice = request.form.get('feat_choice')
         if feat_choice:
@@ -392,8 +399,11 @@ def level_up_character(char_id):
                 character.feats.append(feat)
 
         new_spell_ids = request.form.getlist('new_spells')
-        if new_spell_ids:
-            character.learn_new_spells([int(sid) for sid in new_spell_ids])
+        if new_spell_ids and hasattr(character, 'learn_new_spells'):
+            try:
+                character.learn_new_spells([int(sid) for sid in new_spell_ids])
+            except (TypeError, ValueError):
+                pass
 
         character.level_up()
 

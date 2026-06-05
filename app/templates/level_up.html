@@ -39,7 +39,7 @@
                         <select name="feat_choice" id="feat_choice" class="w-full border rounded p-2 mb-2" disabled>
                             <option value="">-- Select a Feat --</option>
                             {% for feat in available_feats %}
-                                <option value="{{ feat.id }}">{{ feat.name }}</option>
+                                <option value="{{ feat.id }}" data-description="{{ feat.description | replace('\n', ' ') | replace('"', '&quot;') if feat.description else '' }}">{{ feat.name }}</option>
                             {% endfor %}
                         </select>
                         <p id="feat_desc" class="text-sm text-gray-600 italic"></p>
@@ -98,16 +98,6 @@
 </div>
 
 <script>
-    // Store feat data for display
-    const feats = {
-        {% for feat in available_feats %}
-            {{ feat.id }}: {
-                name: "{{ feat.name }}",
-                description: "{{ feat.description | replace('\n', ' ') | replace('"', '\\"') if feat.description else '' }}"
-            }{{ "," if not loop.last else "" }}
-        {% endfor %}
-    };
-
     // Handle feat selection
     const featChoiceSelect = document.getElementById('feat_choice');
     const featDescDiv = document.getElementById('feat_desc');
@@ -116,21 +106,27 @@
     asiRadios.forEach(radio => {
         radio.addEventListener('change', () => {
             if (radio.value === 'feat') {
-                featChoiceSelect.disabled = false;
-                featChoiceSelect.focus();
+                featChoiceSelect?.removeAttribute('disabled');
+                featChoiceSelect?.focus();
             } else {
-                featChoiceSelect.disabled = true;
-                featDescDiv.textContent = '';
+                if (featChoiceSelect) {
+                    featChoiceSelect.disabled = true;
+                }
+                if (featDescDiv) {
+                    featDescDiv.textContent = '';
+                }
             }
         });
     });
 
-    featChoiceSelect.addEventListener('change', () => {
-        const featId = parseInt(featChoiceSelect.value);
-        if (featId && feats[featId]) {
-            featDescDiv.textContent = feats[featId].description;
-        } else {
-            featDescDiv.textContent = '';
-        }
-    });
+    if (featChoiceSelect) {
+        featChoiceSelect.addEventListener('change', () => {
+            const selectedOption = featChoiceSelect.options[featChoiceSelect.selectedIndex];
+            if (featDescDiv) {
+                featDescDiv.textContent = selectedOption?.dataset.description || '';
+            }
+        });
+    }
 </script>
+
+{% endblock %}

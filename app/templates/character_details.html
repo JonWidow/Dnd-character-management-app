@@ -8,7 +8,7 @@
         <p class="text-red-600 font-semibold">Character not found.</p>
         <p><a href="{{ url_for('characters.characters') }}" class="text-blue-600 hover:underline">Back to list</a></p>
     {% else %}
-        <div class="flex justify-between items-center mb-4">
+        <div id="characterDetails" data-character-id="{{ character.id }}" class="flex justify-between items-center mb-4">
             <h1 class="text-3xl font-bold text-blue-800">{{ character.name }}</h1>
             <div class="flex space-x-2">
                 <button id="spellStatsBtn"
@@ -200,10 +200,10 @@
                     <div class="flex flex-wrap gap-2" data-level="{{ slot.level }}">
                       {% for i in range(1, slot.total_slots + 1) %}
                         <button type="button" 
-                                class="w-8 h-8 rounded border-2 transition {% if i <= used_count %}bg-red-400 border-red-600 hover:bg-red-500{% else %}bg-blue-400 border-blue-600 hover:bg-blue-500{% endif %}"
+                                class="spell-slot-button w-8 h-8 rounded border-2 transition {% if i <= used_count %}bg-red-400 border-red-600 hover:bg-red-500{% else %}bg-blue-400 border-blue-600 hover:bg-blue-500{% endif %}"
                                 data-slot-id="{{ slot.id }}"
                                 data-level="{{ slot.level }}"
-                                onclick="toggleSpellSlot(event, {{ character.id }}, {{ slot.id }}, {{ i }})">
+                                data-slot-num="{{ i }}">
                           {{ i }}
                         </button>
                       {% endfor %}
@@ -488,9 +488,12 @@
 
         <script>
             // Spell slot toggle function
-            async function toggleSpellSlot(event, charId, slotId, slotNumber) {
+            async function toggleSpellSlot(event) {
                 event.preventDefault();
-                const button = event.target;
+                const button = event.currentTarget;
+                const charId = Number(document.getElementById('characterDetails').dataset.characterId);
+                const slotId = button.dataset.slotId;
+                const slotNumber = button.dataset.slotNum;
                 
                 try {
                     // Determine if we're using a slot (red) or restoring it (blue)
@@ -517,6 +520,9 @@
                     alert('Failed to toggle spell slot. Please try again.');
                 }
             }
+
+            const spellSlotButtons = document.querySelectorAll('.spell-slot-button');
+            spellSlotButtons.forEach(btn => btn.addEventListener('click', toggleSpellSlot));
 
             // Spell Stats modal
             const statsModal = document.getElementById("spellStatsModal");
@@ -590,7 +596,8 @@
             // Function to dynamically update prepare spells modal
             async function updatePrepareSpellsModal() {
                 try {
-                    const response = await fetch(`/api/characters/{{ character.id }}/known-spells`);
+                    const charId = Number(document.getElementById('characterDetails').dataset.characterId);
+                    const response = await fetch(`/api/characters/${charId}/known-spells`);
                     if (!response.ok) throw new Error('Failed to fetch spells');
                     
                     const data = await response.json();
@@ -804,7 +811,7 @@
             
             saveHPBtn?.addEventListener('click', async () => {
                 const newHP = parseInt(currentHPInput.value) || 0;
-                const charId = {{ character.id }};
+                const charId = Number(document.getElementById('characterDetails').dataset.characterId);
                 
                 try {
                     const response = await fetch(`/grid/characters/${charId}/hp`, {
@@ -862,7 +869,7 @@
             // Favorite button toggle
             const favoriteBtn = document.getElementById('favoriteBtn');
             favoriteBtn?.addEventListener('click', async () => {
-                const charId = {{ character.id }};
+                const charId = Number(document.getElementById('characterDetails').dataset.characterId);
                 const res = await fetch(`/characters/${charId}/toggle_favorite`, { method: 'POST' });
                 const data = await res.json();
                 
