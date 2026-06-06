@@ -6,19 +6,36 @@
 <div class="max-w-3xl mx-auto bg-white rounded-lg p-6 shadow-md" style="background-color: #fafbfc;">
     <h1 class="text-3xl font-bold mb-4 text-blue-800">{{ feat.name }}</h1>
 
-    {% if feat.prerequisites and feat.prerequisites | length > 0 %}
+    {% set prereqs = feat.prerequisites %}
+    {% if prereqs and (prereqs.get('classes') or prereqs.get('ability_scores') or prereqs.get('minimum_level') or prereqs.get('required_feats')) %}
     <div class="mb-6 p-4 border-l-4 border-yellow-500 bg-yellow-50">
-        <h2 class="text-lg font-semibold mb-2 text-yellow-900">Prerequisites</h2>
-        <ul class="list-disc list-inside space-y-1">
-            {% for prereq in feat.prerequisites %}
+        <h2 class="text-lg font-semibold mb-3 text-yellow-900">Prerequisites</h2>
+        <ul class="space-y-2">
+            {% if prereqs.get('classes') %}
                 <li class="text-gray-700">
-                    {% if prereq.ability_score %}
-                        {{ prereq.ability_score.name }} {{ prereq.minimum_score }}
-                    {% else %}
-                        {{ prereq | string }}
-                    {% endif %}
+                    <strong>Class:</strong> {{ prereqs['classes'] | join(', ') }}
                 </li>
-            {% endfor %}
+            {% endif %}
+            {% if prereqs.get('ability_scores') %}
+                <li class="text-gray-700">
+                    <strong>Ability Scores:</strong>
+                    <ul class="list-disc list-inside ml-4">
+                        {% for ability_req in prereqs['ability_scores'] %}
+                            <li>{{ ability_req['ability'] }} {{ ability_req.get('minimum', 10) }} or higher</li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endif %}
+            {% if prereqs.get('minimum_level') %}
+                <li class="text-gray-700">
+                    <strong>Level:</strong> {{ prereqs['minimum_level'] }} or higher
+                </li>
+            {% endif %}
+            {% if prereqs.get('required_feats') %}
+                <li class="text-gray-700">
+                    <strong>Required Feats:</strong> {{ prereqs['required_feats'] | join(', ') }}
+                </li>
+            {% endif %}
         </ul>
     </div>
     {% endif %}

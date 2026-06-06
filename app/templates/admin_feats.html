@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Feat Management{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-8">
+    <a href="{{ url_for('admin_index') }}" class="inline-flex items-center text-blue-600 hover:text-blue-800 mb-4">
+        <i class="fas fa-arrow-left mr-2"></i>Back to Admin Panel
+    </a>
+
+    <h1 class="text-4xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800">Feat Management</h1>
+
+    <!-- Create/Edit Feat Form -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold mb-4">Add/Edit Feat</h2>
+        <form method="post" class="space-y-4">
+            <div>
+                <label class="block text-sm font-semibold mb-2">Feat ID (leave empty for new feat)</label>
+                <select name="feat_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                    <option value="">-- Create New Feat --</option>
+                    {% for feat in feats %}
+                        <option value="{{ feat.id }}">{{ feat.name }}</option>
+                    {% endfor %}
+                </select>
+                <small class="text-gray-500">Select a feat to edit, or leave blank to create a new one.</small>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Feat Name</label>
+                    <input type="text" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-semibold mb-2">Description</label>
+                <textarea name="description" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></textarea>
+            </div>
+
+            <hr class="my-6">
+
+            <h3 class="text-lg font-semibold mb-4">Prerequisites (Optional)</h3>
+
+            <div>
+                <label class="block text-sm font-semibold mb-2">Classes (comma-separated)</label>
+                <input type="text" name="classes" placeholder="e.g., Fighter, Paladin, Rogue" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                <small class="text-gray-500">Leave blank if available to all classes.</small>
+            </div>
+
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">STR Minimum</label>
+                    <input type="number" name="str_min" min="0" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">DEX Minimum</label>
+                    <input type="number" name="dex_min" min="0" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">CON Minimum</label>
+                    <input type="number" name="con_min" min="0" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">INT Minimum</label>
+                    <input type="number" name="int_min" min="0" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">WIS Minimum</label>
+                    <input type="number" name="wis_min" min="0" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-2">CHA Minimum</label>
+                    <input type="number" name="cha_min" min="0" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Minimum Level</label>
+                    <input type="number" name="minimum_level" min="1" max="20" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Required Feats (comma-separated)</label>
+                    <input type="text" name="required_feats" placeholder="e.g., Great Weapon Master, Polearm Master" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent">
+                </div>
+            </div>
+
+            <div class="flex gap-4 pt-4">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition">Save Feat</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Feats List -->
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-2xl font-bold">All Feats ({{ feats | length }})</h2>
+        </div>
+
+        <div class="divide-y divide-gray-200">
+            {% for feat in feats %}
+            <div class="px-6 py-4 hover:bg-gray-50 transition">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-blue-800">{{ feat.name }}</h3>
+                        {% if feat.description %}
+                            <p class="text-gray-600 text-sm mt-1">{{ feat.description | truncate(100) }}</p>
+                        {% endif %}
+                        {% if feat.prerequisites and (feat.prerequisites.get('classes') or feat.prerequisites.get('ability_scores') or feat.prerequisites.get('minimum_level') or feat.prerequisites.get('required_feats')) %}
+                            <div class="text-xs text-yellow-700 mt-2 space-y-1">
+                                {% if feat.prerequisites.get('classes') %}
+                                    <div><strong>Classes:</strong> {{ feat.prerequisites['classes'] | join(', ') }}</div>
+                                {% endif %}
+                                {% if feat.prerequisites.get('ability_scores') %}
+                                    <div><strong>Abilities:</strong>
+                                        {% for ability_req in feat.prerequisites['ability_scores'] %}
+                                            {{ ability_req['ability'] }} {{ ability_req.get('minimum', 10) }}{{ ", " if not loop.last }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                {% if feat.prerequisites.get('minimum_level') %}
+                                    <div><strong>Level:</strong> {{ feat.prerequisites['minimum_level'] }}+</div>
+                                {% endif %}
+                                {% if feat.prerequisites.get('required_feats') %}
+                                    <div><strong>Requires:</strong> {{ feat.prerequisites['required_feats'] | join(', ') }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <form method="post" class="ml-4">
+                        <input type="hidden" name="feat_id" value="{{ feat.id }}">
+                        <input type="hidden" name="action" value="delete">
+                        <button type="submit" class="px-3 py-1 text-xs font-semibold bg-red-100 text-red-800 rounded-lg hover:bg-red-200 transition" onclick="return confirm('Delete {{ feat.name }}?')">Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if feats | length == 0 %}
+            <div class="px-6 py-8 text-center text-gray-500">
+                <p>No feats created yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

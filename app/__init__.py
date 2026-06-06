@@ -393,6 +393,89 @@ def delete_subclass(subclass_id: int):
     return redirect(url_for('admin_subclasses'))
 
 
+@app.route('/admin/feats', methods=['GET', 'POST'])
+@login_required
+def admin_feats():
+    """Manage feats and their prerequisites."""
+    _require_admin()
+    
+    if request.method == 'POST':
+        feat_id = request.form.get('feat_id', type=int)
+        action = request.form.get('action', '').strip()
+        
+        if action == 'delete':
+            feat = Feat.query.get_or_404(feat_id)
+            feat_name = feat.name
+            db.session.delete(feat)
+            db.session.commit()
+            flash(f'Feat "{feat_name}" deleted successfully.', 'success')
+            return redirect(url_for('admin_feats'))
+        
+        # Create or Update
+        feat_name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        
+        if not feat_name:
+            flash('Feat name is required.', 'error')
+            return redirect(url_for('admin_feats'))
+        
+        # Build prerequisites JSON
+        prerequisites = {}
+        
+        # Classes
+        classes_str = request.form.get('classes', '').strip()
+        if classes_str:
+            prerequisites['classes'] = [c.strip() for c in classes_str.split(',') if c.strip()]
+        
+        # Ability scores
+        ability_scores = []
+        for ability in ['STR', 'DEX', 'CON', 'INT', 'WIS', 'CHA']:
+            min_score = request.form.get(f'{ability.lower()}_min', type=int)
+            if min_score and min_score > 0:
+                ability_scores.append({'ability': ability, 'minimum': min_score})
+        if ability_scores:
+            prerequisites['ability_scores'] = ability_scores
+        
+        # Minimum level
+        min_level = request.form.get('minimum_level', type=int)
+        if min_level and min_level > 0:
+            prerequisites['minimum_level'] = min_level
+        
+        # Required feats
+        required_feats_str = request.form.get('required_feats', '').strip()
+        if required_feats_str:
+            prerequisites['required_feats'] = [f.strip() for f in required_feats_str.split(',') if f.strip()]
+        
+        if feat_id:
+            # Update existing
+            feat = Feat.query.get_or_404(feat_id)
+            feat.name = feat_name
+            feat.description = description
+            feat.prerequisites = prerequisites if prerequisites else list()
+            db.session.commit()
+            flash(f'Feat "{feat_name}" updated successfully.', 'success')
+        else:
+            # Create new
+            existing = Feat.query.filter_by(name=feat_name).first()
+            if existing:
+                flash(f'Feat "{feat_name}" already exists.', 'error')
+                return redirect(url_for('admin_feats'))
+            
+            feat = Feat(
+                name=feat_name,
+                description=description,
+                prerequisites=prerequisites if prerequisites else list()
+            )
+            db.session.add(feat)
+            db.session.commit()
+            flash(f'Feat "{feat_name}" created successfully.', 'success')
+        
+        return redirect(url_for('admin_feats'))
+    
+    # GET: Show the form
+    feats = Feat.query.order_by(Feat.name).all()
+    return render_template('admin_feats.html', feats=feats)
+
 
 @app.route('/api/classes/<int:class_id>/subclasses')
 def api_class_subclasses(class_id: int):
