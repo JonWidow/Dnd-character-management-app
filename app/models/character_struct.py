@@ -124,6 +124,7 @@ class Feat(db.Model):
     name = db.Column(db.String(128), unique=True, nullable=False)
     description = db.Column(db.Text)
     prerequisites = db.Column(db.JSON, default=list)  # e.g., [{"ability_score": "STR", "minimum_score": 13}]
+    spell_grants = db.Column(db.JSON, default=list)  # {"granted_spells": [ids], "spell_choices": [{"count": 1, "spells": [ids]}]}
     
     # Relationships
     # Classes that can take this feat
@@ -162,6 +163,34 @@ class Feat(db.Model):
                 return False
         
         return True
+    
+    def apply_spell_grants(self, character, spell_choices=None):
+        """Apply spell grants from this feat to a character.
+        
+        Args:
+            character: The Character to grant spells to
+            spell_choices: Dict mapping spell_choice index to selected spell IDs, e.g., {0: [spell_id1, spell_id2]}
+        """
+        from app.models import Spell
+        
+        if not self.spell_grants:
+            return
+        
+        grants = self.spell_grants if isinstance(self.spell_grants, dict) else {}
+        
+        # Grant automatic spells
+        for spell_id in grants.get('granted_spells', []):
+            spell = Spell.query.get(spell_id)
+            if spell and spell not in character.spells:
+                character.spells.append(spell)
+        
+        # Apply chosen spells from choices
+        spell_choices = spell_choices or {}
+        for choice_idx, chosen_spell_ids in spell_choices.items():
+            for spell_id in chosen_spell_ids:
+                spell = Spell.query.get(spell_id)
+                if spell and spell not in character.spells:
+                    character.spells.append(spell)
     
     def __repr__(self):
         return f"<Feat {self.name}>"

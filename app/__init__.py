@@ -446,12 +446,42 @@ def admin_feats():
         if required_feats_str:
             prerequisites['required_feats'] = [f.strip() for f in required_feats_str.split(',') if f.strip()]
         
+        # Build spell grants JSON
+        spell_grants = {}
+        
+        # Granted spells (automatically given)
+        granted_spell_ids_str = request.form.get('granted_spell_ids', '').strip()
+        if granted_spell_ids_str:
+            try:
+                spell_ids = [int(sid.strip()) for sid in granted_spell_ids_str.split(',') if sid.strip()]
+                spell_grants['granted_spells'] = spell_ids
+            except ValueError:
+                pass
+        
+        # Spell choices (choose N from a list)
+        spell_choices = []
+        choice_count = request.form.get('spell_choice_count', type=int) or 0
+        if choice_count and choice_count > 0:
+            choice_spells_str = request.form.get('spell_choice_options', '').strip()
+            if choice_spells_str:
+                try:
+                    choice_spell_ids = [int(sid.strip()) for sid in choice_spells_str.split(',') if sid.strip()]
+                    spell_choices.append({
+                        'count': choice_count,
+                        'spells': choice_spell_ids
+                    })
+                except ValueError:
+                    pass
+        if spell_choices:
+            spell_grants['spell_choices'] = spell_choices
+        
         if feat_id:
             # Update existing
             feat = Feat.query.get_or_404(feat_id)
             feat.name = feat_name
             feat.description = description
             feat.prerequisites = prerequisites if prerequisites else list()
+            feat.spell_grants = spell_grants if spell_grants else list()
             db.session.commit()
             flash(f'Feat "{feat_name}" updated successfully.', 'success')
         else:
@@ -464,7 +494,8 @@ def admin_feats():
             feat = Feat(
                 name=feat_name,
                 description=description,
-                prerequisites=prerequisites if prerequisites else list()
+                prerequisites=prerequisites if prerequisites else list(),
+                spell_grants=spell_grants if spell_grants else list()
             )
             db.session.add(feat)
             db.session.commit()

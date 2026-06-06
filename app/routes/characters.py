@@ -398,6 +398,9 @@ def level_up_character(char_id):
             feat = Feat.query.get(int(feat_choice))
             if feat and feat not in character.feats:
                 character.feats.append(feat)
+                # Apply spell grants from the feat
+                if hasattr(feat, 'apply_spell_grants'):
+                    feat.apply_spell_grants(character)
 
         new_spell_ids = request.form.getlist('new_spells')
         if new_spell_ids and hasattr(character, 'learn_new_spells'):
